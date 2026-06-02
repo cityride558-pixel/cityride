@@ -396,8 +396,9 @@
             border-radius: 24px;
             width: 90%;
             max-width: 550px;
+            max-height: 90vh;
+            overflow-y: auto;
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
             animation: modalSlideUp 0.4s ease;
         }
 
@@ -1129,6 +1130,53 @@
         </div>
     </div>
 
+    <!-- Edit Vendor Modal -->
+    <div id="edit-vendor-modal" class="map-modal" style="display: none;">
+        <div class="map-modal-content" style="max-width: 500px;">
+            <div class="map-header">
+                <h3>Update Business Partner</h3>
+                <button class="close-map" onclick="closeEditVendorModal()">&times;</button>
+            </div>
+            <div style="padding: 2rem;">
+                <form id="edit-vendor-form">
+                    <input type="hidden" id="edit-v-db-id">
+                    <div class="input-group">
+                        <label>Partner ID</label>
+                        <input type="text" id="edit-v-id" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Full Name</label>
+                        <input type="text" id="edit-v-name" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Business Name</label>
+                        <input type="text" id="edit-v-business" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Email</label>
+                        <input type="email" id="edit-v-email" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Access Key (Leave blank to keep current)</label>
+                        <input type="text" id="edit-v-pass" placeholder="Enter new password if changing">
+                    </div>
+                    <div class="input-group">
+                        <label>Phone</label>
+                        <input type="text" id="edit-v-phone" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Status</label>
+                        <select id="edit-v-status" style="width: 100%; padding: 0.85rem 1rem; border-radius: 10px; border: 1px solid rgba(0,0,0,0.1); font-family: inherit; font-size: 1rem;">
+                            <option value="0">Active</option>
+                            <option value="1">Deactivated</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top: 1rem;">Update Partner Details</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Transfer Ride Modal -->
     <div id="transfer-ride-modal" class="map-modal" style="display: none;">
         <div class="map-modal-content" style="max-width: 460px;">
@@ -1407,7 +1455,7 @@
                                     <td data-label="Model">${d.car_model || '---'}</td>
                                     <td data-label="Actions">
                                         <button class="action-btn" onclick='openEditModal(${JSON.stringify(d).replace(/"/g, "&quot;")})'>Edit</button>
-                                        <button class="action-btn" style="color:#2e7d32; margin-left:10px" onclick='viewApplication(${JSON.stringify(d).replace(/"/g, "&quot;")})'>Docs</button>
+                                        <button class="action-btn" style="color:#2e7d32; margin-left:10px" onclick="viewDriverDocs(${d.id})">Docs</button>
                                         <button class="action-btn" style="color:#f39c12; margin-left:10px" onclick="openPasswordModal('driver', ${d.id}, '${d.name}')">Password</button>
                                         <button class="action-btn" style="color:#888; margin-left:10px" onclick="deleteDriver(${d.id})">Revoke</button>
                                     </td>
@@ -1552,6 +1600,7 @@
                                     </span>
                                 </td>
                                 <td data-label="Actions">
+                                    <button class="action-btn" style="color:#888; margin-right:10px;" onclick='openEditVendorModal(${JSON.stringify(v).replace(/"/g, "&quot;")})'>Edit</button>
                                     <button class="action-btn" style="color:#888" onclick="deleteVendor(${v.id})">Revoke</button>
                                 </td>
                             </tr>
@@ -1790,6 +1839,52 @@
             } catch (err) { alert('Update sequence failed.'); }
         });
 
+        function openEditVendorModal(v) {
+            document.getElementById('edit-v-db-id').value = v.id;
+            document.getElementById('edit-v-id').value = v.vendor_id;
+            document.getElementById('edit-v-name').value = v.name;
+            document.getElementById('edit-v-business').value = v.business_name;
+            document.getElementById('edit-v-email').value = v.email;
+            document.getElementById('edit-v-phone').value = v.phone || '';
+            document.getElementById('edit-v-pass').value = '';
+            document.getElementById('edit-v-status').value = v.is_blocked || 0;
+            document.getElementById('edit-vendor-modal').style.display = 'flex';
+        }
+
+        function closeEditVendorModal() {
+            document.getElementById('edit-vendor-modal').style.display = 'none';
+        }
+
+        document.getElementById('edit-vendor-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                id: document.getElementById('edit-v-db-id').value,
+                vendor_id: document.getElementById('edit-v-id').value,
+                name: document.getElementById('edit-v-name').value,
+                business_name: document.getElementById('edit-v-business').value,
+                email: document.getElementById('edit-v-email').value,
+                password: document.getElementById('edit-v-pass').value || null,
+                phone: document.getElementById('edit-v-phone').value,
+                is_blocked: parseInt(document.getElementById('edit-v-status').value)
+            };
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/admin/update-vendor`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    alert('Business Partner Updated Successfully.');
+                    closeEditVendorModal();
+                    loadTabData('vendors');
+                } else {
+                    const err = await res.json();
+                    alert(err.error);
+                }
+            } catch (err) { alert('Update sequence failed.'); }
+        });
+
         function openWalletModal(id, balance) {
             document.getElementById('edit-w-id').value = id;
             document.getElementById('edit-w-balance').value = parseFloat(balance || 0).toFixed(2);
@@ -1924,29 +2019,148 @@
             }
         });
 
+        let lightboxRotation = 0;
+        let lightboxZoom = 1;
+
         function openDocument(path, label) {
-            if (path && path.startsWith('data:')) {
-                const w = window.open();
-                if (w) {
-                    w.document.title = label || "Document Viewer";
-                    w.document.body.style.margin = '0';
-                    w.document.body.style.display = 'flex';
-                    w.document.body.style.justifyContent = 'center';
-                    w.document.body.style.alignItems = 'center';
-                    w.document.body.style.backgroundColor = '#1e1e1e';
-                    w.document.body.style.fontFamily = 'sans-serif';
-                    
-                    const img = w.document.createElement('img');
-                    img.src = path;
-                    img.style.maxWidth = '100%';
-                    img.style.maxHeight = '100vh';
-                    img.style.objectFit = 'contain';
-                    w.document.body.appendChild(img);
+            if (!path) return;
+            lightboxRotation = 0;
+            lightboxZoom = 1;
+            const img = document.getElementById('lightbox-img');
+            img.src = path;
+            img.style.transform = `scale(1) rotate(0deg)`;
+            document.getElementById('lightbox-title').textContent = label || 'Document Viewer';
+            document.getElementById('lightbox-modal').style.display = 'flex';
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox-modal').style.display = 'none';
+            document.getElementById('lightbox-img').src = '';
+        }
+
+        function rotateLightbox(deg) {
+            lightboxRotation += deg;
+            updateLightboxTransform();
+        }
+
+        function zoomLightbox(factor) {
+            lightboxZoom += factor;
+            if (lightboxZoom < 0.2) lightboxZoom = 0.2;
+            if (lightboxZoom > 3) lightboxZoom = 3;
+            updateLightboxTransform();
+        }
+
+        function updateLightboxTransform() {
+            const img = document.getElementById('lightbox-img');
+            img.style.transform = `scale(${lightboxZoom}) rotate(${lightboxRotation}deg)`;
+        }
+
+        function downloadLightboxDoc() {
+            const img = document.getElementById('lightbox-img');
+            if (!img || !img.src || img.src === window.location.href) {
+                alert('No document available to download.');
+                return;
+            }
+            
+            const title = document.getElementById('lightbox-title').textContent || 'document';
+            const cleanTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            
+            const tempImg = new Image();
+            
+            if (img.src.startsWith('http') || img.src.startsWith('//')) {
+                tempImg.crossOrigin = 'anonymous';
+            }
+            
+            function triggerDirectDownload() {
+                if (img.src.startsWith('data:')) {
+                    try {
+                        const parts = img.src.split(',');
+                        const contentType = parts[0].split(':')[1].split(';')[0];
+                        const byteString = atob(parts[1]);
+                        const arrayBuffer = new ArrayBuffer(byteString.length);
+                        const uint8Array = new Uint8Array(arrayBuffer);
+                        for (let i = 0; i < byteString.length; i++) {
+                            uint8Array[i] = byteString.charCodeAt(i);
+                        }
+                        const blob = new Blob([uint8Array], { type: 'image/png' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `${cleanTitle}.png`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    } catch (e) {
+                        console.error('Base64 blob conversion failed', e);
+                    }
                 } else {
-                    alert('Popup blocked. Please allow popups to view document.');
+                    fetch(img.src)
+                        .then(res => res.blob())
+                        .then(blob => {
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = `${cleanTitle}.png`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        })
+                        .catch(err => {
+                            console.error('Fetch blob failed, trying direct link', err);
+                            const link = document.createElement('a');
+                            link.href = img.src;
+                            link.download = `${cleanTitle}.png`;
+                            link.target = '_blank';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        });
                 }
-            } else if (path) {
-                window.open(path, '_blank');
+            }
+            
+            tempImg.onload = function() {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = tempImg.naturalWidth || 800;
+                    canvas.height = tempImg.naturalHeight || 800;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(tempImg, 0, 0);
+                    
+                    canvas.toBlob(function(blob) {
+                        if (!blob) {
+                            triggerDirectDownload();
+                            return;
+                        }
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `${cleanTitle}.png`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }, 'image/png');
+                } catch (err) {
+                    console.error('Canvas export failed, falling back', err);
+                    triggerDirectDownload();
+                }
+            };
+            
+            tempImg.onerror = function(err) {
+                console.error('Image load failed, falling back', err);
+                triggerDirectDownload();
+            };
+            
+            tempImg.src = img.src;
+        }
+
+        async function viewDriverDocs(driverId) {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/admin/driver/${driverId}`);
+                if (!res.ok) throw new Error('Failed to fetch pilot details');
+                const data = await res.json();
+                viewApplication(data.driver);
+            } catch (err) {
+                alert('Could not retrieve pilot documents: ' + err.message);
             }
         }
 
@@ -2112,6 +2326,26 @@
 
         // Consolidation: Script continues after the HTML modals
     </script>
+    <!-- Image Lightbox Modal -->
+    <div id="lightbox-modal" class="map-modal" style="display: none; background: rgba(0,0,0,0.92); z-index: 11000; flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 0;">
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1.2rem; background: rgba(0,0,0,0.5); border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 11001; box-sizing: border-box;">
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button onclick="rotateLightbox(-90)" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer;">↺ Rotate</button>
+                <button onclick="rotateLightbox(90)" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer;">↻ Rotate</button>
+                <button onclick="zoomLightbox(0.1)" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer;">Zoom +</button>
+                <button onclick="zoomLightbox(-0.1)" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer;">Zoom -</button>
+                <button onclick="downloadLightboxDoc()" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #28a745; border: 1px solid #28a745; color: white; border-radius: 6px; cursor: pointer; font-weight: 500;">⬇ Download</button>
+            </div>
+            <button onclick="closeLightbox()" style="color: white; font-size: 2.2rem; background: none; border: none; cursor: pointer; line-height: 1; padding: 0 0.5rem; transition: color 0.2s; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center;">&times;</button>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex-grow: 1; width: 100%; height: calc(100% - 70px); padding: 1.5rem; box-sizing: border-box;">
+            <h3 id="lightbox-title" style="color: white; margin-top: 0; margin-bottom: 1.5rem; font-weight: 500; letter-spacing: 1px; font-size: 1.2rem;">Document</h3>
+            <div style="overflow: auto; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
+                <img id="lightbox-img" src="" style="max-width: 90%; max-height: 80%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: transform 0.2s ease; transform: scale(1) rotate(0deg);">
+            </div>
+        </div>
+    </div>
+
     <!-- Application Document Modal -->
     <div id="doc-modal" class="map-modal" style="display: none;">
         <div class="map-modal-content" style="max-width: 900px; width: 95%;">

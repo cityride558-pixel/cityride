@@ -726,10 +726,13 @@ async function sendDailyReport() {
         // 1. Gather Rich Data
         const [bookings] = await db.query(`
             SELECT b.*, 
-                   u.name as customer_name, u.phone as customer_phone, u.email as customer_email,
+                   COALESCE(u.name, tu.name) as customer_name, 
+                   COALESCE(u.phone, tu.phone) as customer_phone, 
+                   COALESCE(u.email, tu.email) as customer_email,
                    d.name as driver_name, d.phone as driver_phone, d.car_model, d.car_number
             FROM taxi_bookings b 
             LEFT JOIN passengers u ON b.user_id = u.id 
+            LEFT JOIN taxi_passengers tu ON b.user_id = tu.id
             LEFT JOIN taxi_drivers d ON b.driver_id = d.id 
             WHERE b.created_at >= ?
         `, [todayStart]);
@@ -1599,9 +1602,12 @@ app.get('/api/admin/rejection-history', async (req, res) => {
 app.get('/api/driver/my-jobs/:driverId', async (req, res) => {
     try {
         const sql = `
-            SELECT b.*, u.name as customer_name, u.phone as customer_phone 
+            SELECT b.*, 
+                   COALESCE(u.name, tu.name) as customer_name, 
+                   COALESCE(u.phone, tu.phone) as customer_phone 
             FROM taxi_bookings b 
             LEFT JOIN passengers u ON b.user_id = u.id 
+            LEFT JOIN taxi_passengers tu ON b.user_id = tu.id
             WHERE b.driver_id = ? AND b.status IN ("assigned", "ongoing", "finished", "completed", "cancel_requested")
             ORDER BY b.created_at DESC
         `;
@@ -1657,11 +1663,14 @@ app.get('/api/admin/stats', async (req, res) => {
 app.get('/api/admin/bookings', async (req, res) => {
     try {
         const sql = `
-            SELECT b.*, u.name as customer_name, u.phone as customer_phone, 
+            SELECT b.*, 
+                   COALESCE(u.name, tu.name) as customer_name, 
+                   COALESCE(u.phone, tu.phone) as customer_phone, 
                    d.name as driver_name, d.car_model, d.car_number, d.phone as driver_phone,
                    v.business_name as vendor_business_name
             FROM taxi_bookings b
             LEFT JOIN passengers u ON b.user_id = u.id
+            LEFT JOIN taxi_passengers tu ON b.user_id = tu.id
             LEFT JOIN taxi_drivers d ON b.driver_id = d.id
             LEFT JOIN taxi_vendors v ON b.vendor_id = v.id
             ORDER BY b.created_at DESC
@@ -1688,6 +1697,19 @@ app.get('/api/admin/drivers', async (req, res) => {
     try {
         const [rows] = await db.query("SELECT id, name, email, phone, 'driver' as role, car_model, car_number, vehicle_type, wallet_balance, is_blocked, created_at FROM taxi_drivers ORDER BY created_at DESC");
         res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/admin/driver/:id', async (req, res) => {
+    try {
+        const [drivers] = await db.query('SELECT * FROM taxi_drivers WHERE id = ?', [req.params.id]);
+        if (drivers.length > 0) {
+            res.json({ success: true, driver: drivers[0] });
+        } else {
+            res.status(404).json({ error: 'Driver not found.' });
+        }
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1856,6 +1878,33 @@ app.post('/api/admin/create-vendor', async (req, res) => {
     }
 });
 
+app.post('/api/admin/update-vendor', async (req, res) => {
+    try {
+        const { id, vendor_id, name, business_name, email, password, phone, is_blocked } = req.body;
+        
+        const [existing] = await db.query('SELECT id FROM taxi_vendors WHERE (vendor_id = ? OR email = ?) AND id != ?', [vendor_id, email, id]);
+        if (existing.length > 0) return res.status(400).json({ error: 'Partner ID or Email already exists on another account.' });
+
+        let sql = 'UPDATE taxi_vendors SET vendor_id = ?, name = ?, business_name = ?, email = ?, phone = ?, is_blocked = ?';
+        let params = [vendor_id, name, business_name, email, phone, is_blocked];
+
+        if (password && password.trim() !== "") {
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+            sql += ', password = ?';
+            params.push(hashedPassword);
+        }
+
+        sql += ' WHERE id = ?';
+        params.push(id);
+
+        await db.query(sql, params);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.post('/api/admin/delete-vendor', async (req, res) => {
     try {
         await db.query("DELETE FROM taxi_vendors WHERE id = ?", [req.body.id]);
@@ -1871,9 +1920,12 @@ app.get('/api/driver/jobs/:driverId', async (req, res) => {
         
         const driverVehicleType = driverRows[0].vehicle_type;
         const sql = `
-            SELECT b.*, u.name as customer_name, u.phone as customer_phone 
+            SELECT b.*, 
+                   COALESCE(u.name, tu.name) as customer_name, 
+                   COALESCE(u.phone, tu.phone) as customer_phone 
             FROM taxi_bookings b 
             LEFT JOIN passengers u ON b.user_id = u.id 
+            LEFT JOIN taxi_passengers tu ON b.user_id = tu.id
             WHERE b.status = "pending" AND b.vehicle_type = ?
             ORDER BY b.created_at ASC
         `;

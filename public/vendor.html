@@ -271,7 +271,7 @@
                                 <th>Bike (Rate)</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="rate-chart-tbody">
                             <tr>
                                 <td><b>Local (Base Fare)</b></td>
                                 <td>₹250 (Incl 10KM)</td>
@@ -439,6 +439,93 @@
         // UI Controls
         function openRateChart() { document.getElementById('rate-modal').style.display = 'flex'; }
         function closeRateChart() { document.getElementById('rate-modal').style.display = 'none'; }
+
+        function renderRateChart() {
+            const tbody = document.getElementById('rate-chart-tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = `
+                <tr>
+                    <td><b>Local (Base Fare)</b></td>
+                    <td>₹${pricing.sedan.local.base} (Incl ${pricing.sedan.local.minKm || 0}KM)</td>
+                    <td>₹${pricing.suv.local.base} (Incl ${pricing.suv.local.minKm || 0}KM)</td>
+                    <td>₹${pricing.bike.local.base} (Incl ${pricing.bike.local.minKm || 0}KM)</td>
+                </tr>
+                <tr>
+                    <td><b>Local (Per KM)</b></td>
+                    <td>₹${pricing.sedan.local.perKm} / KM</td>
+                    <td>₹${pricing.suv.local.perKm} / KM</td>
+                    <td>₹${pricing.bike.local.perKm} / KM</td>
+                </tr>
+                <tr>
+                    <td><b>One-Way Outstation</b></td>
+                    <td>₹${pricing.sedan.oneway.perKm} / KM (Min ${pricing.sedan.oneway.minKm || 130}KM)</td>
+                    <td>₹${pricing.suv.oneway.perKm} / KM (Min ${pricing.suv.oneway.minKm || 130}KM)</td>
+                    <td>₹${pricing.bike.oneway.perKm} / KM (Min ${pricing.bike.oneway.minKm || 5}KM)</td>
+                </tr>
+                <tr>
+                    <td><b>Round-Trip</b></td>
+                    <td>₹${pricing.sedan.round ? pricing.sedan.round.perKm : '-'} / KM (Min ${pricing.sedan.round ? (pricing.sedan.round.minKmPerDay || 250) : '-'}KM/day)</td>
+                    <td>₹${pricing.suv.round ? pricing.suv.round.perKm : '-'} / KM (Min ${pricing.suv.round ? (pricing.suv.round.minKmPerDay || 250) : '-'}KM/day)</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td><b>Driver Bata</b></td>
+                    <td>₹400 / Day</td>
+                    <td>₹500 / Day</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td><b>Rental (2Hr/20KM)</b></td>
+                    <td>₹${pricing.sedan.rental && pricing.sedan.rental['2-20'] ? pricing.sedan.rental['2-20'].base : '-'}</td>
+                    <td>₹${pricing.suv.rental && pricing.suv.rental['2-20'] ? pricing.suv.rental['2-20'].base : '-'}</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td><b>Rental (4Hr/40KM)</b></td>
+                    <td>₹${pricing.sedan.rental && pricing.sedan.rental['4-40'] ? pricing.sedan.rental['4-40'].base : '-'}</td>
+                    <td>₹${pricing.suv.rental && pricing.suv.rental['4-40'] ? pricing.suv.rental['4-40'].base : '-'}</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td><b>Rental (8Hr/80KM)</b></td>
+                    <td>₹${pricing.sedan.rental && pricing.sedan.rental['8-80'] ? pricing.sedan.rental['8-80'].base : '-'}</td>
+                    <td>₹${pricing.suv.rental && pricing.suv.rental['8-80'] ? pricing.suv.rental['8-80'].base : '-'}</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td><b>Rental (12Hr/120KM)</b></td>
+                    <td>₹${pricing.sedan.rental && pricing.sedan.rental['12-120'] ? pricing.sedan.rental['12-120'].base : '-'}</td>
+                    <td>₹${pricing.suv.rental && pricing.suv.rental['12-120'] ? pricing.suv.rental['12-120'].base : '-'}</td>
+                    <td>-</td>
+                </tr>
+            `;
+        }
+
+        async function fetchAndUpdateTariffs() {
+            try {
+                const res = await fetch('/api/tariffs');
+                if (!res.ok) throw new Error('Failed to fetch tariffs');
+                const tariffs = await res.json();
+                
+                tariffs.forEach(t => {
+                    const vType = t.vehicle_type;
+                    const cat = t.category;
+                    const config = typeof t.config === 'string' ? JSON.parse(t.config) : t.config;
+                    
+                    if (pricing[vType]) {
+                        pricing[vType][cat] = config;
+                    }
+                });
+                
+                // Re-render rate chart
+                renderRateChart();
+                // Recalculate options if input already exists
+                calculateVendorFare();
+            } catch (err) {
+                console.error('Error fetching tariffs:', err);
+            }
+        }
 
         // Check Auth
         const vendorData = JSON.parse(localStorage.getItem('cityride_vendor'));
@@ -840,6 +927,7 @@
         
         // Initial load
         setCategory('local');
+        fetchAndUpdateTariffs();
 
         // Restore missing core functions
         const burger = document.getElementById('vendor-burger');
