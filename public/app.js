@@ -10,8 +10,13 @@ const VEHICLE_ICONS = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    const isLandingPage = window.location.pathname.endsWith('/') || window.location.pathname === '/' || window.location.pathname.endsWith('/');
-    const isAuthPage = window.location.pathname.includes('/auth') || window.location.pathname.includes('/login');
+    const isLandingPage = window.location.pathname.endsWith('/') || 
+                          window.location.pathname === '/' || 
+                          window.location.pathname.endsWith('/index.html') ||
+                          window.location.pathname.endsWith('index.html');
+    const isAuthPage = window.location.pathname.includes('/auth') || 
+                       window.location.pathname.includes('/login') || 
+                       window.location.pathname.includes('auth.html');
 
     const member = JSON.parse(localStorage.getItem('cityride_member'));
     const pilot = JSON.parse(localStorage.getItem('cityride_pilot'));
@@ -371,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${isDisabled ? `<div class="vehicle-capacity-warning">Exceeds capacity for ${passengers}</div>` : ''}
                     </div>
                     <div class="vehicle-price-wrap">
-                        <div class="vehicle-price">₹${totalFare}</div>
+                        <div class="vehicle-price">₹${totalFare} <span style="font-size:0.65rem; font-weight:normal; color:#888;">Approx.</span></div>
                         <div class="vehicle-eta">Choose</div>
                     </div>
                 `;
@@ -384,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Update state
                         currentTripType = tType.id;
                         vehicleSelect.value = vType;
-                        fareVal.textContent = `₹${totalFare}`;
+                        fareVal.textContent = `₹${totalFare} (Approx.)`;
                         distanceVal.textContent = displayDistance;
 
                         // Toggle related inputs for better UX
@@ -624,8 +629,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pendingBookingData && summary) {
             summary.innerHTML = `
                 <div style="padding: 1.2rem; background: #fff8f8; border: 1.5px solid var(--primary-red); border-radius: 16px; font-size: 0.9rem; line-height: 1.6; color: #333;">
-                    <div style="font-weight: 800; color: var(--primary-red); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 1px; font-size: 1.1rem;">📋 Important Notice</div>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div style="font-weight: 800; color: var(--primary-red); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 1px; font-size: 1.1rem;">📋 Booking Summary</div>
+                    <div style="margin-bottom: 1.2rem; padding-bottom: 1.2rem; border-bottom: 1px dashed rgba(220, 20, 60, 0.2); font-size: 1.05rem;">
+                        <div><b>Estimated Fare (Approx.):</b> <span style="color: var(--primary-red); font-weight: 800; font-size: 1.2rem;">${pendingBookingData.fare}</span></div>
+                        <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">* The amount is an approximate calculation. Tolls, state permits, parking charges, and route deviation adjustments based on actual path or time taken will be updated dynamically during the trip.</div>
+                    </div>
+                    <div style="font-weight: 800; color: var(--primary-red); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9rem;">📋 Important Policies</div>
+                    <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem;">
                         <div><b>@Additional:</b> Toll Fees, Inter-State Permit Airport Charges Parking Charges (if any) are extra.</div>
                         <div><b>@Driver Betta:</b> Rs. 400. [Rs. 600 for above 250kms]</div>
                         <div><b>@Hill Station Charges:</b> - Rs. 400</div>

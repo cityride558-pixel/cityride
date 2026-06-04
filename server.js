@@ -172,6 +172,7 @@ async function initDB() {
         connectionLimit: 10,
         queueLimit: 0,
         charset: 'UTF8MB4_UNICODE_CI',
+        timezone: 'Z',
         enableKeepAlive: true,
         keepAliveInitialDelay: 10000
     };
@@ -472,6 +473,33 @@ async function initDB() {
         // Migration: Vendor Support
         try { await db.query('ALTER TABLE taxi_bookings ADD COLUMN vendor_id INT NULL'); } catch(e){}
         try { await db.query('ALTER TABLE taxi_bookings ADD COLUMN vendor_markup DECIMAL(10,2) DEFAULT 0'); } catch(e){}
+        try { await db.query('ALTER TABLE taxi_bookings ADD COLUMN passenger_name VARCHAR(100) DEFAULT NULL'); } catch(e){}
+        try { await db.query('ALTER TABLE taxi_bookings ADD COLUMN passenger_phone VARCHAR(20) DEFAULT NULL'); } catch(e){}
+
+        // Migration: GPS Tracking & Deviation
+        try { await db.query('ALTER TABLE taxi_bookings ADD COLUMN actual_distance VARCHAR(50) DEFAULT NULL'); } catch(e){}
+        try { await db.query('ALTER TABLE taxi_bookings ADD COLUMN is_deviated TINYINT DEFAULT 0'); } catch(e){}
+        try { await db.query('ALTER TABLE taxi_bookings ADD COLUMN original_fare VARCHAR(50) DEFAULT NULL'); } catch(e){}
+        try { await db.query('ALTER TABLE taxi_bookings ADD COLUMN return_date DATE DEFAULT NULL'); } catch(e){}
+
+        // Migration: Dual Distance Calculation (Static + Dynamic)
+        try { await db.query('ALTER TABLE taxi_bookings ADD COLUMN estimated_distance VARCHAR(50) DEFAULT NULL'); } catch(e){}
+        try { await db.query('ALTER TABLE taxi_bookings ADD COLUMN estimated_fare VARCHAR(50) DEFAULT NULL'); } catch(e){}
+        try { await db.query('ALTER TABLE taxi_bookings ADD COLUMN dynamic_distance VARCHAR(50) DEFAULT NULL'); } catch(e){}
+        try { await db.query('ALTER TABLE taxi_bookings ADD COLUMN dynamic_fare VARCHAR(50) DEFAULT NULL'); } catch(e){}
+        
+        // GPS Logs Table
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS taxi_ride_gps_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                booking_id INT,
+                latitude DECIMAL(10, 8),
+                longitude DECIMAL(11, 8),
+                accuracy DECIMAL(8, 2),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX (booking_id)
+            )
+        `);
 
         // Recovery: Generate OTPs for legacy rides that don't have one
         try {
@@ -524,6 +552,18 @@ async function initDB() {
                 category VARCHAR(50),
                 config JSON,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        `);
+
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS taxi_vendor_tariffs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                vendor_id INT,
+                vehicle_type VARCHAR(50),
+                category VARCHAR(50),
+                config JSON,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY vendor_vehicle_cat (vendor_id, vehicle_type, category)
             )
         `);
 
@@ -726,8 +766,8 @@ async function sendDailyReport() {
         // 1. Gather Rich Data
         const [bookings] = await db.query(`
             SELECT b.*, 
-                   COALESCE(u.name, tu.name) as customer_name, 
-                   COALESCE(u.phone, tu.phone) as customer_phone, 
+                   COALESCE(b.passenger_name, u.name, tu.name) as customer_name, 
+                   COALESCE(b.passenger_phone, u.phone, tu.phone) as customer_phone, 
                    COALESCE(u.email, tu.email) as customer_email,
                    d.name as driver_name, d.phone as driver_phone, d.car_model, d.car_number
             FROM taxi_bookings b 
@@ -1377,6 +1417,8 @@ app.post('/api/bookings/create', async (req, res) => {
     try {
         const booking = req.body;
         const journeyOtp = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit OTP
+        const fareStr = String(booking.fare || '₹0');
+        const distStr = String(booking.distance || '0 KM');
         const values = [
             booking.userId || 1,
             String(booking.pickup || ''),
@@ -1388,18 +1430,71 @@ app.post('/api/bookings/create', async (req, res) => {
             parseInt(booking.passengers) || 1,
             String(booking.vehicle || 'sedan'),
             String(booking.tripType || 'oneway'),
-            String(booking.fare || '₹0'),
-            String(booking.distance || '0 KM'),
+            fareStr,
+            distStr,
             journeyOtp,
             'pending',
             booking.vendorId || null,
             booking.vendorMarkup || 0,
-            booking.rentalPackage || null
+            booking.rentalPackage || null,
+            booking.returnDate || null,
+            booking.passengerName || null,
+            booking.passengerPhone || null,
+            distStr,  // estimated_distance (static, never changes)
+            fareStr   // estimated_fare (static, never changes)
         ];
-        const [result] = await db.query('INSERT INTO taxi_bookings (user_id, pickup_loc, pickup_coords, drop_loc, drop_coords, pickup_date, pickup_time, passengers, vehicle_type, trip_type, fare, distance, journey_otp, status, vendor_id, vendor_markup, rental_package) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', values);
+        const [result] = await db.query('INSERT INTO taxi_bookings (user_id, pickup_loc, pickup_coords, drop_loc, drop_coords, pickup_date, pickup_time, passengers, vehicle_type, trip_type, fare, distance, journey_otp, status, vendor_id, vendor_markup, rental_package, return_date, passenger_name, passenger_phone, estimated_distance, estimated_fare) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', values);
         res.json({ success: true, bookingId: result.insertId, journeyOtp: journeyOtp });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+// --- VENDOR CUSTOM TARIFF CONTROLLERS ---
+app.get('/api/vendor/tariffs/:vendorId', async (req, res) => {
+    try {
+        const vendorId = req.params.vendorId;
+        const [defaultTariffs] = await db.query('SELECT * FROM taxi_tariffs');
+        const [vendorTariffs] = await db.query('SELECT * FROM taxi_vendor_tariffs WHERE vendor_id = ?', [vendorId]);
+        
+        const merged = defaultTariffs.map(def => {
+            const vTariff = vendorTariffs.find(v => v.vehicle_type === def.vehicle_type && v.category === def.category);
+            if (vTariff) {
+                return {
+                    ...def,
+                    id: vTariff.id,
+                    config: vTariff.config,
+                    is_custom: true,
+                    updated_at: vTariff.updated_at
+                };
+            }
+            return {
+                ...def,
+                is_custom: false
+            };
+        });
+        res.json(merged);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch vendor tariffs' });
+    }
+});
+
+app.post('/api/vendor/update-tariff', async (req, res) => {
+    try {
+        const { vendorId, vehicleType, category, config } = req.body;
+        if (!vendorId || !vehicleType || !category || !config) {
+            return res.status(400).json({ error: 'vendorId, vehicleType, category, and config are required.' });
+        }
+        
+        await db.query(
+            `INSERT INTO taxi_vendor_tariffs (vendor_id, vehicle_type, category, config) 
+             VALUES (?, ?, ?, ?) 
+             ON DUPLICATE KEY UPDATE config = ?`,
+            [vendorId, vehicleType, category, JSON.stringify(config), JSON.stringify(config)]
+        );
+        res.json({ success: true, message: 'Vendor tariff updated successfully.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update vendor tariff.' });
     }
 });
 
@@ -1459,21 +1554,7 @@ app.post('/api/user/cancel-ride', async (req, res) => {
     }
 });
 
-// 2.1.1a Admin Cancel Ride (Status Update) — used by admin dashboard
-app.post('/api/bookings/update-status', async (req, res) => {
-    try {
-        const { bookingId, status } = req.body;
-        if (!bookingId || !status) return res.status(400).json({ error: 'bookingId and status are required.' });
-        await db.query('UPDATE taxi_bookings SET status = ? WHERE id = ?', [status, bookingId]);
-        // If cancelling, also unassign the driver
-        if (status === 'cancelled') {
-            await db.query('UPDATE taxi_bookings SET driver_id = NULL WHERE id = ?', [bookingId]);
-        }
-        res.json({ success: true, message: `Booking #${bookingId} updated to ${status}.` });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+
 
 // 2.1.2 Check Passenger Ban Status
 app.get('/api/user/ban-status/:userId', async (req, res) => {
@@ -1603,8 +1684,8 @@ app.get('/api/driver/my-jobs/:driverId', async (req, res) => {
     try {
         const sql = `
             SELECT b.*, 
-                   COALESCE(u.name, tu.name) as customer_name, 
-                   COALESCE(u.phone, tu.phone) as customer_phone 
+                   COALESCE(b.passenger_name, u.name, tu.name) as customer_name, 
+                   COALESCE(b.passenger_phone, u.phone, tu.phone) as customer_phone 
             FROM taxi_bookings b 
             LEFT JOIN passengers u ON b.user_id = u.id 
             LEFT JOIN taxi_passengers tu ON b.user_id = tu.id
@@ -1617,6 +1698,8 @@ app.get('/api/driver/my-jobs/:driverId', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+
 
 // 3. Admin Panel Stats
 app.get('/api/admin/stats', async (req, res) => {
@@ -1664,8 +1747,8 @@ app.get('/api/admin/bookings', async (req, res) => {
     try {
         const sql = `
             SELECT b.*, 
-                   COALESCE(u.name, tu.name) as customer_name, 
-                   COALESCE(u.phone, tu.phone) as customer_phone, 
+                   COALESCE(b.passenger_name, u.name, tu.name) as customer_name, 
+                   COALESCE(b.passenger_phone, u.phone, tu.phone) as customer_phone, 
                    d.name as driver_name, d.car_model, d.car_number, d.phone as driver_phone,
                    v.business_name as vendor_business_name
             FROM taxi_bookings b
@@ -1955,14 +2038,250 @@ app.post('/api/admin/transfer-ride', async (req, res) => {
     }
 });
 
+// Helper for GPS distance calculation (Haversine formula)
+function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// Helper for Peak Multiplier matching client side
+function getPeakMultiplier(timeStr, peakRules) {
+    if (!timeStr) return 0;
+    const parts = timeStr.split(':').map(Number);
+    const tm = parts[0] * 60 + parts[1];
+
+    let highestSurcharge = 0;
+    peakRules.forEach(rule => {
+        const startParts = rule.start_time.split(':').map(Number);
+        const endParts = rule.end_time.split(':').map(Number);
+        const stm = startParts[0] * 60 + startParts[1];
+        const etm = endParts[0] * 60 + endParts[1];
+
+        if (tm >= stm && tm <= etm) {
+            const surcharge = parseFloat(rule.surcharge_percentage) / 100;
+            if (surcharge > highestSurcharge) highestSurcharge = surcharge;
+        }
+    });
+    return highestSurcharge;
+}
+// 4.9 Driver Dashboard Stats
+app.get('/api/driver/dashboard-stats/:driverId', async (req, res) => {
+    try {
+        const driverId = req.params.driverId;
+        
+        // Total completed rides & earnings
+        const [completedStats] = await db.query(
+            `SELECT COUNT(*) as total_rides, 
+                    COALESCE(SUM(CAST(REPLACE(REPLACE(fare, '₹', ''), ',', '') AS DECIMAL(10,2))), 0) as total_earnings
+             FROM taxi_bookings WHERE driver_id = ? AND status IN ('completed', 'finished')`, [driverId]
+        );
+        
+        // Today's stats
+        const [todayStats] = await db.query(
+            `SELECT COUNT(*) as today_rides, 
+                    COALESCE(SUM(CAST(REPLACE(REPLACE(fare, '₹', ''), ',', '') AS DECIMAL(10,2))), 0) as today_earnings
+             FROM taxi_bookings WHERE driver_id = ? AND status IN ('completed', 'finished') AND DATE(COALESCE(journey_end_time, created_at)) = CURDATE()`, [driverId]
+        );
+
+        // This week's stats
+        const [weekStats] = await db.query(
+            `SELECT COUNT(*) as week_rides, 
+                    COALESCE(SUM(CAST(REPLACE(REPLACE(fare, '₹', ''), ',', '') AS DECIMAL(10,2))), 0) as week_earnings
+             FROM taxi_bookings WHERE driver_id = ? AND status IN ('completed', 'finished') AND COALESCE(journey_end_time, created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)`, [driverId]
+        );
+        
+        // Ride counts by status
+        const [statusCounts] = await db.query(
+            `SELECT status, COUNT(*) as count FROM taxi_bookings WHERE driver_id = ? GROUP BY status`, [driverId]
+        );
+        
+        // Recent ride history (last 50 completed, finished, and cancelled rides with customer details)
+        const [rideHistory] = await db.query(
+            `SELECT b.id, b.pickup_loc, b.drop_loc, b.fare, b.distance, b.actual_distance, b.vehicle_type, b.trip_type, 
+                    b.journey_start_time, b.journey_end_time, b.status, b.pickup_date, b.pickup_time, b.created_at,
+                    COALESCE(b.passenger_name, u.name, tu.name) as customer_name,
+                    COALESCE(b.passenger_phone, u.phone, tu.phone) as customer_phone
+             FROM taxi_bookings b
+             LEFT JOIN passengers u ON b.user_id = u.id
+             LEFT JOIN taxi_passengers tu ON b.user_id = tu.id
+             WHERE b.driver_id = ? AND b.status IN ('completed', 'finished', 'cancelled')
+             ORDER BY COALESCE(b.journey_end_time, b.created_at) DESC LIMIT 50`, [driverId]
+        );
+        
+        res.json({
+            totals: completedStats[0],
+            today: todayStats[0],
+            week: weekStats[0],
+            statusCounts: statusCounts,
+            rideHistory: rideHistory
+        });
+    } catch (err) {
+        console.error('Driver dashboard stats error:', err);
+        res.status(500).json({ error: 'Failed to fetch dashboard stats.' });
+    }
+});
+
 // 5. Update Booking Status & Odometer/Timer Logic
 app.post('/api/bookings/start-journey', async (req, res) => {
     try {
-        const { bookingId, startOdometer } = req.body;
-        if (!bookingId || !startOdometer) return res.status(400).json({ error: 'Booking ID and Start Odometer are required.' });
+        const { bookingId, startOdometer, latitude, longitude } = req.body;
+        if (!bookingId) return res.status(400).json({ error: 'Booking ID is required.' });
         
-        await db.query('UPDATE taxi_bookings SET status = "ongoing", start_odometer = ?, journey_start_time = NOW() WHERE id = ?', [startOdometer, bookingId]);
-        res.json({ success: true, message: 'Journey started. Timer is now running.' });
+        // Fetch booking details
+        const [rows] = await db.query('SELECT fare, original_fare, pickup_coords, drop_coords, vehicle_type, trip_type, pickup_time, rental_package, return_date, pickup_date, vendor_id, vendor_markup, distance FROM taxi_bookings WHERE id = ?', [bookingId]);
+        if (rows.length === 0) return res.status(404).json({ error: 'Booking not found.' });
+
+        const booking = rows[0];
+
+        // Store original fare if not already stored
+        if (!booking.original_fare) {
+            await db.query('UPDATE taxi_bookings SET original_fare = ? WHERE id = ?', [booking.fare, bookingId]);
+        }
+
+        // Also backfill estimated values if missing (for legacy bookings created before this feature)
+        await db.query(
+            'UPDATE taxi_bookings SET estimated_distance = COALESCE(estimated_distance, ?), estimated_fare = COALESCE(estimated_fare, ?) WHERE id = ?',
+            [booking.distance || '0 KM', booking.fare || '₹0', bookingId]
+        );
+
+        // Determine start coordinates from driver's actual GPS or fallback to booking pickup coords
+        let startCoords = null;
+        if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
+            startCoords = `${longitude},${latitude}`;
+        } else {
+            startCoords = booking.pickup_coords || null;
+        }
+
+        // === DYNAMIC DISTANCE CALCULATION ===
+        // Calculate the actual road distance from driver's current GPS to the drop location
+        let dynamicDistKm = 0;
+        const dropCoords = booking.drop_coords;
+
+        if (startCoords && dropCoords && booking.trip_type !== 'rental') {
+            // Primary: Use OSRM road routing for accurate road distance
+            try {
+                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startCoords};${dropCoords}?overview=false`;
+                const osrmRes = await axios.get(osrmUrl, { timeout: 5000 });
+                if (osrmRes.data && osrmRes.data.routes && osrmRes.data.routes.length > 0) {
+                    dynamicDistKm = osrmRes.data.routes[0].distance / 1000; // meters to km
+                    console.log(`[Start Journey #${bookingId}] OSRM dynamic distance: ${dynamicDistKm.toFixed(2)} KM (from ${startCoords} to ${dropCoords})`);
+                }
+            } catch (osrmErr) {
+                console.warn(`[Start Journey #${bookingId}] OSRM routing failed, falling back to Haversine:`, osrmErr.message);
+            }
+
+            // Fallback: Haversine if OSRM failed
+            if (dynamicDistKm < 0.1) {
+                const [sLng, sLat] = startCoords.split(',').map(Number);
+                const [dLng, dLat] = dropCoords.split(',').map(Number);
+                if (!isNaN(sLng) && !isNaN(sLat) && !isNaN(dLng) && !isNaN(dLat)) {
+                    dynamicDistKm = getDistance(sLat, sLng, dLat, dLng) * 1.3; // 30% road correction
+                    console.log(`[Start Journey #${bookingId}] Haversine fallback distance (×1.3): ${dynamicDistKm.toFixed(2)} KM`);
+                }
+            }
+        }
+
+        // === DYNAMIC FARE CALCULATION ===
+        let dynamicFare = 0;
+        let dynamicFareStr = booking.fare; // default to original if calc fails
+        let dynamicDistStr = `${dynamicDistKm.toFixed(1)} KM`;
+
+        if (booking.trip_type !== 'rental' && dynamicDistKm >= 0) {
+            // Fetch tariff config
+            const [tariffRows] = await db.query('SELECT config FROM tariffs WHERE vehicle_type = ? AND category = ?', [booking.vehicle_type, booking.trip_type]);
+            let pricingConfig = null;
+            if (tariffRows.length > 0) {
+                pricingConfig = typeof tariffRows[0].config === 'string' ? JSON.parse(tariffRows[0].config) : tariffRows[0].config;
+            }
+
+            // Fetch peak rules
+            const [peakRules] = await db.query('SELECT * FROM taxi_peak_rules WHERE is_active = 1');
+            const peakMult = getPeakMultiplier(booking.pickup_time, peakRules);
+
+            if (booking.trip_type === 'local') {
+                const config = pricingConfig || { base: 150, perKm: 20, minKm: 0 };
+                if (dynamicDistKm <= 0) {
+                    // 0 KM = base fare only
+                    dynamicFare = config.base * 1.05;
+                    console.log(`[Start Journey #${bookingId}] Dynamic distance is 0 KM. Applying base fare only: ₹${Math.ceil(dynamicFare)}`);
+                } else {
+                    const minKm = config.minKm || 0;
+                    const extraKm = Math.max(0, dynamicDistKm - minKm);
+                    const baseKmFare = config.base + (extraKm * config.perKm);
+                    const peakCharge = baseKmFare * peakMult;
+                    const minBill = booking.vehicle_type === 'suv' ? 300 : (booking.vehicle_type === 'sedan' ? 200 : (booking.vehicle_type === 'hatchback' ? 150 : 50));
+                    dynamicFare = Math.max(minBill, baseKmFare + peakCharge) * 1.05;
+                }
+            } else if (booking.trip_type === 'oneway') {
+                const config = pricingConfig || { base: 0, perKm: 13, minKm: 130 };
+                if (dynamicDistKm <= 0) {
+                    // 0 KM = base fare + driver allowance only
+                    const driverAllowance = booking.vehicle_type === 'bike' ? 0 : 400;
+                    dynamicFare = (config.base + driverAllowance) * 1.05;
+                    console.log(`[Start Journey #${bookingId}] Dynamic distance is 0 KM. Applying base fare only: ₹${Math.ceil(dynamicFare)}`);
+                } else {
+                    const minKm = config.minKm || 130;
+                    const billableDist = Math.max(dynamicDistKm, minKm);
+                    const driverAllowance = billableDist > 250 ? 600 : 400;
+                    const baseFare = config.base + (billableDist * (config.perKm || 13)) + (booking.vehicle_type === 'bike' ? 0 : driverAllowance);
+                    dynamicFare = baseFare * 1.05;
+                }
+            } else if (booking.trip_type === 'round') {
+                const config = pricingConfig || { base: 0, perKm: 12, minKmPerDay: 250 };
+                if (dynamicDistKm <= 0) {
+                    const driverAllowance = booking.vehicle_type === 'bike' ? 0 : 400;
+                    dynamicFare = (config.base + driverAllowance) * 1.05;
+                    console.log(`[Start Journey #${bookingId}] Dynamic distance is 0 KM. Applying base fare only: ₹${Math.ceil(dynamicFare)}`);
+                } else {
+                    let tripDays = 1;
+                    if (booking.return_date && booking.pickup_date) {
+                        const start = new Date(booking.pickup_date);
+                        const end = new Date(booking.return_date);
+                        if (end > start) {
+                            const diffTime = Math.abs(end - start);
+                            tripDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                        }
+                    }
+                    const minKmForTrip = (config.minKmPerDay || 250) * tripDays;
+                    const billableDist = Math.max(dynamicDistKm, minKmForTrip);
+                    const driverAllowance = billableDist > 250 ? 600 : 400;
+                    const baseFare = config.base + (billableDist * (config.perKm || 12));
+                    dynamicFare = ((baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance * tripDays))) * 1.05;
+                }
+            }
+
+            dynamicFareStr = `₹${Math.ceil(dynamicFare)}`;
+        }
+
+        // === UPDATE DATABASE ===
+        if (startOdometer) {
+            await db.query(
+                'UPDATE taxi_bookings SET status = "ongoing", start_odometer = ?, journey_start_time = NOW(), start_gps_coords = ?, dynamic_distance = ?, dynamic_fare = ?, fare = ?, distance = ? WHERE id = ?',
+                [startOdometer, startCoords, dynamicDistStr, dynamicFareStr, dynamicFareStr, dynamicDistStr, bookingId]
+            );
+        } else {
+            await db.query(
+                'UPDATE taxi_bookings SET status = "ongoing", journey_start_time = NOW(), start_gps_coords = ?, dynamic_distance = ?, dynamic_fare = ?, fare = ?, distance = ? WHERE id = ?',
+                [startCoords, dynamicDistStr, dynamicFareStr, dynamicFareStr, dynamicDistStr, bookingId]
+            );
+        }
+
+        console.log(`[Start Journey #${bookingId}] Estimated: ${booking.distance} / ${booking.fare} → Dynamic: ${dynamicDistStr} / ${dynamicFareStr}`);
+
+        res.json({ 
+            success: true, 
+            message: 'Journey started. GPS tracking is now active.',
+            estimatedDistance: booking.distance,
+            estimatedFare: booking.fare,
+            dynamicDistance: dynamicDistStr,
+            dynamicFare: dynamicFareStr
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1993,12 +2312,10 @@ app.post('/api/bookings/update-status', async (req, res) => {
 
             // Handle Rental Calculations (Legacy - now handled in /finish-trip)
             if (booking.trip_type === 'rental') {
-                // If they bypassed finish-trip somehow, we still need journey_end_time
                 if (!booking.journey_end_time) {
                     await db.query('UPDATE taxi_bookings SET journey_end_time = NOW() WHERE id = ?', [bookingId]);
                 }
             } else {
-                // Non-rental rides also record end time
                 await db.query('UPDATE taxi_bookings SET journey_end_time = NOW() WHERE id = ?', [bookingId]);
             }
 
@@ -2012,6 +2329,9 @@ app.post('/api/bookings/update-status', async (req, res) => {
             });
         }
         
+        if (status === 'cancelled') {
+            await db.query('UPDATE taxi_bookings SET driver_id = NULL WHERE id = ?', [bookingId]);
+        }
         await db.query('UPDATE taxi_bookings SET status = ? WHERE id = ?', [status, bookingId]);
         res.json({ success: true });
     } catch (err) {
@@ -2019,23 +2339,37 @@ app.post('/api/bookings/update-status', async (req, res) => {
     }
 });
 
-// 2.8 Finish Trip (Odometer Input & Fare Calculation)
+// 2.8 Finish Trip (Odometer Input & Fare Calculation / GPS finalization)
 app.post('/api/bookings/finish-trip', async (req, res) => {
     try {
-        const { bookingId, endOdometer } = req.body;
-        if (!endOdometer) return res.status(400).json({ error: 'End Odometer reading is required.' });
+        const { bookingId, endOdometer, latitude, longitude } = req.body;
 
         const [rows] = await db.query('SELECT * FROM taxi_bookings WHERE id = ?', [bookingId]);
         if (rows.length === 0) return res.status(404).json({ error: 'Booking not found.' });
 
         const booking = rows[0];
-        const distanceCovered = parseInt(endOdometer) - parseInt(booking.start_odometer);
-        if (distanceCovered < 0) return res.status(400).json({ error: 'End Odometer cannot be less than Start Odometer.' });
 
-        let finalFareStr = booking.fare;
-        let durationHrs = null;
+        let endCoords = null;
+        if (latitude !== undefined && longitude !== undefined) {
+            endCoords = `${longitude},${latitude}`;
+        } else {
+            // Get the last logged GPS coords
+            const [lastLog] = await db.query('SELECT latitude, longitude FROM taxi_ride_gps_logs WHERE booking_id = ? ORDER BY id DESC LIMIT 1', [bookingId]);
+            if (lastLog.length > 0) {
+                endCoords = `${lastLog[0].longitude},${lastLog[0].latitude}`;
+            } else {
+                endCoords = booking.drop_coords || null;
+            }
+        }
 
         if (booking.trip_type === 'rental') {
+            if (!endOdometer) return res.status(400).json({ error: 'End Odometer reading is required for rental trips.' });
+            const distanceCovered = parseInt(endOdometer) - parseInt(booking.start_odometer);
+            if (distanceCovered < 0) return res.status(400).json({ error: 'End Odometer cannot be less than Start Odometer.' });
+
+            let finalFareStr = booking.fare;
+            let durationHrs = null;
+
             const [tariffRows] = await db.query('SELECT config FROM tariffs WHERE vehicle_type = ? AND category = "rental"', [booking.vehicle_type]);
             if (tariffRows.length > 0) {
                 const config = typeof tariffRows[0].config === 'string' ? JSON.parse(tariffRows[0].config) : tariffRows[0].config;
@@ -2064,16 +2398,361 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
                     finalFareStr = `₹${finalFareNum}`;
                 }
             }
+            
+            await db.query('UPDATE taxi_bookings SET status = "finished", end_odometer = ?, journey_end_time = NOW(), fare = ?, end_gps_coords = ? WHERE id = ?', [endOdometer, finalFareStr, endCoords, bookingId]);
+            
+            return res.json({ 
+                success: true, 
+                finalFare: finalFareStr, 
+                distance: distanceCovered,
+                duration: durationHrs ? durationHrs.toFixed(2) : null,
+                waitingCharge: 0
+            });
+        } else {
+            // For standard trips (local, oneway, round)
+            // Use stored GPS coords: start_gps_coords (captured at Start Journey press)
+            //                         end_gps_coords (captured at Finish Trip press)
+            let startCoords = booking.start_gps_coords || booking.pickup_coords || null;
+            if (startCoords === 'null,null') {
+                startCoords = booking.pickup_coords || null;
+            }
+            if (endCoords === 'null,null') {
+                endCoords = booking.drop_coords || null;
+            }
+            let distanceCovered = 0;
+
+            // Primary: Use OSRM road routing for accurate road distance
+            if (startCoords && endCoords) {
+                try {
+                    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startCoords};${endCoords}?overview=false`;
+                    const osrmRes = await axios.get(osrmUrl, { timeout: 5000 });
+                    if (osrmRes.data && osrmRes.data.routes && osrmRes.data.routes.length > 0) {
+                        distanceCovered = osrmRes.data.routes[0].distance / 1000; // meters to km
+                        console.log(`[Finish Trip #${bookingId}] OSRM road distance: ${distanceCovered.toFixed(2)} KM (from ${startCoords} to ${endCoords})`);
+                    }
+                } catch (osrmErr) {
+                    console.warn(`[Finish Trip #${bookingId}] OSRM routing failed, falling back to Haversine:`, osrmErr.message);
+                }
+
+                // Fallback: Haversine straight-line if OSRM failed
+                if (distanceCovered < 0.1) {
+                    const [sLng, sLat] = startCoords.split(',').map(Number);
+                    const [eLng, eLat] = endCoords.split(',').map(Number);
+                    if (!isNaN(sLng) && !isNaN(sLat) && !isNaN(eLng) && !isNaN(eLat)) {
+                        distanceCovered = getDistance(sLat, sLng, eLat, eLng) * 1.3; // 30% road correction factor
+                        console.log(`[Finish Trip #${bookingId}] Haversine fallback distance (×1.3): ${distanceCovered.toFixed(2)} KM`);
+                    }
+                }
+            }
+
+            // Last resort: Use estimated distance if GPS path is empty/too short
+            if (distanceCovered < 0.1) {
+                // Prefer estimated_distance (customer-selected static), then distance
+                const fallbackDist = booking.estimated_distance || booking.distance || '0';
+                distanceCovered = parseFloat(fallbackDist.replace(/[^\d.]/g, '')) || 0;
+                console.log(`[Finish Trip #${bookingId}] Using estimated distance as final fallback: ${distanceCovered} KM`);
+            }
+
+            // Calculate final time period of the ride
+            const startTime = new Date(booking.journey_start_time);
+            const endTime = new Date();
+            const durationMs = endTime - startTime;
+            const durationMins = durationMs / (1000 * 60);
+
+            // Allowed time = distanceCovered * 2 min/km
+            const allowedMins = distanceCovered * 2;
+            let waitingCharge = 0;
+            if (durationMins > allowedMins) {
+                waitingCharge = (durationMins - allowedMins) * 2; // 2 rupees per minute
+            }
+
+            // Recalculate Final Fare
+            let totalFare = 0;
+            const [tariffRows] = await db.query('SELECT config FROM tariffs WHERE vehicle_type = ? AND category = ?', [booking.vehicle_type, booking.trip_type]);
+            
+            let pricingConfig = null;
+            if (tariffRows.length > 0) {
+                pricingConfig = typeof tariffRows[0].config === 'string' ? JSON.parse(tariffRows[0].config) : tariffRows[0].config;
+            }
+
+            const [peakRules] = await db.query('SELECT * FROM taxi_peak_rules WHERE is_active = 1');
+            const peakMult = getPeakMultiplier(booking.pickup_time, peakRules);
+
+            if (booking.trip_type === 'local') {
+                const config = pricingConfig || { base: 150, perKm: 20, minKm: 0 };
+                if (distanceCovered <= 0) {
+                    // 0 KM = base fare only
+                    totalFare = (config.base + waitingCharge) * 1.05;
+                    console.log(`[Finish Trip #${bookingId}] 0 KM distance. Base fare only: ₹${Math.ceil(totalFare)}`);
+                } else {
+                    const minKm = config.minKm || 0;
+                    const extraKm = Math.max(0, distanceCovered - minKm);
+                    const baseKmFare = config.base + (extraKm * config.perKm);
+                    const peakCharge = baseKmFare * peakMult;
+                    const minBill = booking.vehicle_type === 'suv' ? 300 : (booking.vehicle_type === 'sedan' ? 200 : (booking.vehicle_type === 'hatchback' ? 150 : 50));
+                    totalFare = (Math.max(minBill, baseKmFare + peakCharge) + waitingCharge) * 1.05;
+                }
+            } else if (booking.trip_type === 'oneway') {
+                const config = pricingConfig || { base: 0, perKm: 13, minKm: 130 };
+                if (distanceCovered <= 0) {
+                    const driverAllowance = booking.vehicle_type === 'bike' ? 0 : 400;
+                    totalFare = (config.base + driverAllowance + waitingCharge) * 1.05;
+                    console.log(`[Finish Trip #${bookingId}] 0 KM distance. Base fare only: ₹${Math.ceil(totalFare)}`);
+                } else {
+                    const minKm = config.minKm || 130;
+                    const billableDist = Math.max(distanceCovered, minKm);
+                    const driverAllowance = billableDist > 250 ? 600 : 400;
+                    const baseFare = config.base + (billableDist * (config.perKm || 13)) + (booking.vehicle_type === 'bike' ? 0 : driverAllowance);
+                    totalFare = (baseFare + waitingCharge) * 1.05;
+                }
+            } else if (booking.trip_type === 'round') {
+                const config = pricingConfig || { base: 0, perKm: 12, minKmPerDay: 250 };
+                if (distanceCovered <= 0) {
+                    const driverAllowance = booking.vehicle_type === 'bike' ? 0 : 400;
+                    totalFare = (config.base + driverAllowance + waitingCharge) * 1.05;
+                    console.log(`[Finish Trip #${bookingId}] 0 KM distance. Base fare only: ₹${Math.ceil(totalFare)}`);
+                } else {
+                    let tripDays = 1;
+                    if (booking.return_date && booking.pickup_date) {
+                        const start = new Date(booking.pickup_date);
+                        const end = new Date(booking.return_date);
+                        if (end > start) {
+                            const diffTime = Math.abs(end - start);
+                            tripDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                        }
+                    }
+                    const minKmForTrip = (config.minKmPerDay || 250) * tripDays;
+                    const billableDist = Math.max(distanceCovered, minKmForTrip);
+                    const driverAllowance = billableDist > 250 ? 600 : 400;
+                    const baseFare = config.base + (billableDist * (config.perKm || 12));
+                    totalFare = ((baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance * tripDays)) + waitingCharge) * 1.05;
+                }
+            }
+
+            const finalFareStr = `₹${Math.ceil(totalFare)}`;
+            const distanceStr = `${distanceCovered.toFixed(1)} KM`;
+
+            await db.query(
+                'UPDATE taxi_bookings SET status = "finished", journey_end_time = NOW(), fare = ?, distance = ?, actual_distance = ?, end_gps_coords = ? WHERE id = ?',
+                [finalFareStr, distanceStr, distanceStr, endCoords, bookingId]
+            );
+
+            return res.json({
+                success: true,
+                finalFare: finalFareStr,
+                distance: distanceCovered.toFixed(1),
+                duration: durationMins.toFixed(1),
+                waitingCharge: waitingCharge.toFixed(1)
+            });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GPS tracking & deviation calculations in real-time
+app.post('/api/bookings/update-gps-location', async (req, res) => {
+    try {
+        const { bookingId, latitude, longitude, accuracy } = req.body;
+        if (!bookingId || latitude === undefined || longitude === undefined) {
+            return res.status(400).json({ error: 'bookingId, latitude, and longitude are required.' });
         }
 
-        // Update booking to 'finished' state
-        await db.query('UPDATE taxi_bookings SET status = "finished", end_odometer = ?, journey_end_time = NOW(), fare = ? WHERE id = ?', [endOdometer, finalFareStr, bookingId]);
+        // 1. Insert into logs table
+        await db.query(
+            'INSERT INTO taxi_ride_gps_logs (booking_id, latitude, longitude, accuracy) VALUES (?, ?, ?, ?)',
+            [bookingId, latitude, longitude, accuracy || 0]
+        );
+
+        // 2. Fetch booking details
+        const [bookings] = await db.query('SELECT * FROM taxi_bookings WHERE id = ?', [bookingId]);
+        if (bookings.length === 0) return res.status(404).json({ error: 'Booking not found.' });
+        const booking = bookings[0];
+
+        // Only recalculate if ongoing
+        if (booking.status !== 'ongoing') {
+            return res.json({ success: true, message: 'GPS logged, booking is not ongoing.', isDeviated: false });
+        }
+
+        // Gracefully ignore null or NaN coordinate updates for calculations
+        if (latitude === null || longitude === null || isNaN(latitude) || isNaN(longitude)) {
+            return res.json({
+                success: true,
+                message: 'GPS logged, but invalid coordinates ignored for recalculations.',
+                isDeviated: false,
+                newFare: booking.fare,
+                totalDistance: booking.distance,
+                actualDistance: booking.actual_distance || '0.0 KM',
+                elapsedMins: 0,
+                allowedMins: 0,
+                waitingCharge: 0
+            });
+        }
+
+        // 3. Calculate actual distance traveled so far by calculating two location data (start of trip and current location)
+        let actualDistKm = 0;
+        let startCoords = booking.start_gps_coords || booking.pickup_coords || null;
+        if (startCoords === 'null,null') {
+            startCoords = booking.pickup_coords || null;
+        }
+        if (startCoords) {
+            const [sLng, sLat] = startCoords.split(',').map(Number);
+            if (!isNaN(sLng) && !isNaN(sLat)) {
+                actualDistKm = getDistance(sLat, sLng, latitude, longitude);
+            }
+        }
+
+        // 4. Check for deviation from planned route
+        let isDeviated = 0;
+        let routeCoords = [];
+        try {
+            const routeUrl = `https://router.project-osrm.org/route/v1/driving/${booking.pickup_coords};${booking.drop_coords}?overview=full&geometries=geojson`;
+            const routeRes = await axios.get(routeUrl, { timeout: 3000 });
+            if (routeRes.data && routeRes.data.routes && routeRes.data.routes.length > 0) {
+                routeCoords = routeRes.data.routes[0].geometry.coordinates; // Array of [lng, lat]
+            }
+        } catch (e) {
+            console.warn('Could not fetch planned route from OSRM for deviation check:', e.message);
+        }
+
+        if (routeCoords.length > 0) {
+            let minDevKm = Infinity;
+            for (const coord of routeCoords) {
+                const d = getDistance(latitude, longitude, coord[1], coord[0]);
+                if (d < minDevKm) minDevKm = d;
+            }
+            if (minDevKm > 0.25) {
+                isDeviated = 1;
+            }
+        }
+
+        // 5. Calculate remaining distance to destination
+        let remainingDistKm = 0;
+        try {
+            const remUrl = `https://router.project-osrm.org/route/v1/driving/${longitude},${latitude};${booking.drop_coords}?overview=false`;
+            const remRes = await axios.get(remUrl, { timeout: 3000 });
+            if (remRes.data && remRes.data.routes && remRes.data.routes.length > 0) {
+                remainingDistKm = remRes.data.routes[0].distance / 1000;
+            }
+        } catch (e) {
+            if (booking.drop_coords) {
+                const [dLng, dLat] = booking.drop_coords.split(',').map(Number);
+                remainingDistKm = getDistance(latitude, longitude, dLat, dLng) * 1.2;
+            }
+        }
+
+        const totalDistance = actualDistKm + remainingDistKm;
+
+        // 5.1 Calculate elapsed time, allowed time, and waiting charge (2 min per km, excess is 2 rupees/min)
+        let elapsedMins = 0;
+        if (booking.journey_start_time) {
+            const startTime = new Date(booking.journey_start_time);
+            const durationMs = new Date() - startTime;
+            elapsedMins = Math.max(0, durationMs / (1000 * 60));
+        }
+        const allowedMins = actualDistKm * 2;
+        let waitingCharge = 0;
+        if (elapsedMins > allowedMins) {
+            waitingCharge = (elapsedMins - allowedMins) * 2;
+        }
+
+        // 6. Recalculate Fare
+        let totalFare = 0;
+        const [tariffRows] = await db.query('SELECT config FROM tariffs WHERE vehicle_type = ? AND category = ?', [booking.vehicle_type, booking.trip_type]);
         
-        res.json({ 
-            success: true, 
-            finalFare: finalFareStr, 
-            distance: distanceCovered,
-            duration: durationHrs ? durationHrs.toFixed(2) : null 
+        let pricingConfig = null;
+        if (tariffRows.length > 0) {
+            pricingConfig = typeof tariffRows[0].config === 'string' ? JSON.parse(tariffRows[0].config) : tariffRows[0].config;
+        }
+
+        const [peakRules] = await db.query('SELECT * FROM taxi_peak_rules WHERE is_active = 1');
+        const peakMult = getPeakMultiplier(booking.pickup_time, peakRules);
+
+        if (booking.trip_type === 'local') {
+            const config = pricingConfig || { base: 150, perKm: 20, minKm: 0 };
+            const minKm = config.minKm || 0;
+            const extraKm = Math.max(0, totalDistance - minKm);
+            const baseKmFare = config.base + (extraKm * config.perKm);
+            const peakCharge = baseKmFare * peakMult;
+            const minBill = booking.vehicle_type === 'suv' ? 300 : (booking.vehicle_type === 'sedan' ? 200 : (booking.vehicle_type === 'hatchback' ? 150 : 50));
+            totalFare = (Math.max(minBill, baseKmFare + peakCharge) + waitingCharge) * 1.05;
+        } else if (booking.trip_type === 'oneway') {
+            const config = pricingConfig || { base: 0, perKm: 13, minKm: 130 };
+            const minKm = config.minKm || 130;
+            const billableDist = Math.max(totalDistance, minKm);
+            const driverAllowance = billableDist > 250 ? 600 : 400;
+            const baseFare = config.base + (billableDist * (config.perKm || 13)) + (booking.vehicle_type === 'bike' ? 0 : driverAllowance);
+            totalFare = (baseFare + waitingCharge) * 1.05;
+        } else if (booking.trip_type === 'round') {
+            const config = pricingConfig || { base: 0, perKm: 12, minKmPerDay: 250 };
+            let tripDays = 1;
+            if (booking.return_date && booking.pickup_date) {
+                const start = new Date(booking.pickup_date);
+                const end = new Date(booking.return_date);
+                if (end > start) {
+                    const diffTime = Math.abs(end - start);
+                    tripDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                }
+            }
+            const minKmForTrip = (config.minKmPerDay || 250) * tripDays;
+            const billableDist = Math.max(totalDistance, minKmForTrip);
+            const driverAllowance = billableDist > 250 ? 600 : 400;
+            const baseFare = config.base + (billableDist * (config.perKm || 12));
+            totalFare = ((baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance * tripDays)) + waitingCharge) * 1.05;
+        } else if (booking.trip_type === 'rental') {
+            const packageVal = booking.rental_package || '2-20';
+            const [pMaxHrs, pMaxKm] = packageVal.split('-').map(Number);
+            const packageConfig = (pricingConfig && pricingConfig[packageVal]) || { base: 600, extraKm: 18, extraHour: 150 };
+            
+            const extraKm = Math.max(0, actualDistKm - pMaxKm);
+            const extraKmCharge = extraKm * packageConfig.extraKm;
+
+            const startTime = new Date(booking.journey_start_time);
+            const durationMs = new Date() - startTime;
+            const durationHrs = durationMs / (1000 * 60 * 60);
+            const extraHrs = Math.max(0, Math.ceil(durationHrs - pMaxHrs));
+            const extraHourCharge = extraHrs * packageConfig.extraHour;
+
+            totalFare = (packageConfig.base + extraKmCharge + extraHourCharge) * 1.05;
+        }
+
+        const finalFare = `₹${Math.ceil(totalFare)}`;
+        const distanceStr = `${totalDistance.toFixed(1)} KM`;
+
+        await db.query(
+            'UPDATE taxi_bookings SET fare = ?, distance = ?, actual_distance = ?, is_deviated = ? WHERE id = ?',
+            [finalFare, distanceStr, `${actualDistKm.toFixed(1)} KM`, isDeviated, bookingId]
+        );
+
+        res.json({
+            success: true,
+            isDeviated: isDeviated === 1,
+            newFare: finalFare,
+            totalDistance: distanceStr,
+            actualDistance: `${actualDistKm.toFixed(1)} KM`,
+            elapsedMins: Math.ceil(elapsedMins),
+            allowedMins: Math.ceil(allowedMins),
+            waitingCharge: Math.ceil(waitingCharge)
+        });
+
+    } catch (err) {
+        console.error('Error in update-gps-location:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/bookings/driver-location/:bookingId', async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const [rows] = await db.query('SELECT latitude, longitude, accuracy, created_at FROM taxi_ride_gps_logs WHERE booking_id = ? ORDER BY id DESC LIMIT 1', [bookingId]);
+        if (rows.length === 0) {
+            return res.json({ latitude: null, longitude: null });
+        }
+        res.json({
+            latitude: parseFloat(rows[0].latitude),
+            longitude: parseFloat(rows[0].longitude),
+            accuracy: parseFloat(rows[0].accuracy),
+            timestamp: rows[0].created_at
         });
     } catch (err) {
         res.status(500).json({ error: err.message });

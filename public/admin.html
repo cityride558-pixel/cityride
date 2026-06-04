@@ -17,12 +17,24 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <style>
         :root {
-            --admin-sidebar: #1a1a1a;
-            --admin-bg: #f8f9fa;
+            --admin-sidebar: #0e1016;
+            --admin-bg: #090a0f;
+            --primary-red: #B71C1C;
+            --primary-red-hover: #8E1515;
+            --dark-charcoal: #ffffff;
+            --text-main: #ffffff;
+            --text-muted: #8e9297;
+            --white: #14161d;
+            --border-color: rgba(255, 255, 255, 0.06);
+            --success-green: #34c759;
+            --danger-red: #ff3b30;
+            --warning-amber: #ff9f0a;
+            --info-blue: #0a84ff;
         }
 
         body {
-            background: var(--admin-bg);
+            background: var(--admin-bg) !important;
+            color: var(--text-main) !important;
             display: flex;
             height: 100vh;
             overflow: hidden;
@@ -43,13 +55,14 @@
             top: 0;
             overflow-y: auto;
             padding-bottom: 4rem;
+            border-right: 1px solid var(--border-color);
         }
 
         .sidebar::-webkit-scrollbar {
             width: 4px;
         }
         .sidebar::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
             border-radius: 10px;
         }
 
@@ -74,18 +87,19 @@
             display: flex;
             align-items: center;
             gap: 1rem;
-            opacity: 0.7;
+            opacity: 0.6;
             font-size: 0.9rem;
+            color: var(--text-main) !important;
         }
         .logout-item {
             margin-top: 2rem;
-            border-top: 1px solid rgba(255,255,255,0.05);
+            border-top: 1px solid var(--border-color);
             padding-top: 2rem;
         }
 
         .nav-item:hover,
         .nav-item.active {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
             opacity: 1;
         }
 
@@ -111,12 +125,12 @@
         }
 
         .main-stage::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.05);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
         }
 
         .main-stage::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 0, 0, 0.15);
+            background: rgba(255, 255, 255, 0.15);
         }
 
         .stage-header {
@@ -124,6 +138,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+
+        .stage-header h1 {
+            color: var(--text-main) !important;
+        }
+
+        .stage-header p {
+            color: var(--text-muted) !important;
         }
 
         .stat-banner {
@@ -134,11 +156,12 @@
         }
 
         .b-card {
-            background: white;
+            background: var(--white);
             padding: 2.5rem;
             border-radius: 24px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            color: var(--text-main) !important;
         }
 
         .b-card h4 {
@@ -152,16 +175,65 @@
         .b-card .val {
             font-size: 2.2rem;
             font-weight: 700;
-            color: var(--dark-charcoal);
+            color: var(--text-main);
+        }
+
+        /* Custom SweetAlert Dark Theme styling */
+        .swal2-popup {
+            background: #14161d !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.06) !important;
+            border-radius: 20px !important;
+        }
+        .swal2-title {
+            color: #ffffff !important;
+        }
+        .swal2-html-container {
+            color: #8e9297 !important;
+        }
+        .swal2-input, .swal2-textarea, .swal2-select {
+            background: #090a0f !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        }
+        .swal2-validation-message {
+            background: rgba(255, 59, 48, 0.1) !important;
+            color: #ff3b30 !important;
+        }
+
+        /* Global Inputs, Selects, and Textareas */
+        input, select, textarea {
+            background: rgba(255, 255, 255, 0.03) !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            padding: 0.75rem 1rem !important;
+            border-radius: 10px !important;
+            outline: none !important;
+            transition: all 0.3s ease !important;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary-red) !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            box-shadow: 0 0 10px rgba(183, 28, 28, 0.2) !important;
+        }
+
+        label {
+            color: var(--text-muted) !important;
+            font-weight: 600 !important;
+            font-size: 0.85rem !important;
+            margin-bottom: 0.5rem !important;
+            display: inline-block !important;
         }
 
         .data-table-container {
-            background: white;
+            background: var(--white);
             border-radius: 30px;
             padding: 2.5rem;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.03);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            border: 1px solid var(--border-color);
         }
 
         /* Custom Scrollbar */
@@ -175,7 +247,7 @@
         }
 
         .data-table-container::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
         }
 
@@ -194,14 +266,15 @@
             font-size: 0.75rem;
             text-transform: uppercase;
             color: var(--text-muted);
-            border-bottom: 2px solid #f0f0f0;
+            border-bottom: 2px solid var(--border-color);
         }
 
         .cityride-table td {
             padding: 1.5rem;
-            border-bottom: 1px solid #f8f8f8;
+            border-bottom: 1px solid var(--border-color);
             font-size: 0.95rem;
             vertical-align: top;
+            color: var(--text-main);
         }
 
         .status-tag {
@@ -213,28 +286,28 @@
         }
 
         .status-pending {
-            background: #fff8e1;
-            color: #ffa000;
+            background: rgba(255, 159, 10, 0.1);
+            color: var(--warning-amber);
         }
 
         .status-assigned {
-            background: #e3f2fd;
-            color: #1976d2;
+            background: rgba(10, 132, 255, 0.1);
+            color: var(--info-blue);
         }
 
         .status-completed {
-            background: #e8f5e9;
-            color: #388e3c;
+            background: rgba(52, 199, 89, 0.1);
+            color: var(--success-green);
         }
 
         .status-cancelled {
-            background: #ffebee;
-            color: #d32f2f;
+            background: rgba(255, 59, 48, 0.1);
+            color: var(--danger-red);
         }
 
         .status-cancel_requested {
-            background: #fce4ec;
-            color: #c2185b;
+            background: rgba(255, 59, 48, 0.15);
+            color: var(--danger-red);
         }
 
         .action-btn {
@@ -391,15 +464,17 @@
         }
 
         .map-modal-content {
-            background: white;
+            background: var(--white);
             padding: 0;
             border-radius: 24px;
             width: 90%;
             max-width: 550px;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
             animation: modalSlideUp 0.4s ease;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
         }
 
         @keyframes modalSlideUp {
@@ -611,13 +686,13 @@
         }
         .pilot-info-block .p-name {
             font-weight: 700;
-            color: #1a1a1a;
+            color: var(--text-main);
             font-size: 0.9rem;
             line-height: 1.2;
         }
         .pilot-info-block .p-email a {
             font-size: 0.75rem;
-            color: #1565c0;
+            color: var(--info-blue);
             text-decoration: none;
             font-weight: 600;
             display: block;
@@ -806,9 +881,9 @@
 
             <!-- Tab Sub-Navigation -->
             <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
-                <button class="btn" style="background: var(--admin-sidebar); color: white; padding: 0.6rem 1.2rem;" onclick="showFleetSubSection('active-pilots')">🏎️ Active Pilots</button>
-                <button class="btn" style="background: #eee; color: #333; padding: 0.6rem 1.2rem;" onclick="showFleetSubSection('pending-apps')">📋 Pending Applications</button>
-                <button class="btn" style="background: #eee; color: #333; padding: 0.6rem 1.2rem;" onclick="showFleetSubSection('onboarding-history')">📜 History</button>
+                <button class="btn" style="background: var(--primary-red); color: white; padding: 0.6rem 1.2rem; border: none;" onclick="showFleetSubSection('active-pilots')">🏎️ Active Pilots</button>
+                <button class="btn" style="background: rgba(255, 255, 255, 0.03); color: var(--text-muted); padding: 0.6rem 1.2rem; border: 1px solid var(--border-color);" onclick="showFleetSubSection('pending-apps')">📋 Pending Applications</button>
+                <button class="btn" style="background: rgba(255, 255, 255, 0.03); color: var(--text-muted); padding: 0.6rem 1.2rem; border: 1px solid var(--border-color);" onclick="showFleetSubSection('onboarding-history')">📜 History</button>
             </div>
 
             <!-- Active Pilots Section -->
@@ -1180,20 +1255,20 @@
     <!-- Transfer Ride Modal -->
     <div id="transfer-ride-modal" class="map-modal" style="display: none;">
         <div class="map-modal-content" style="max-width: 460px;">
-            <div class="map-header" style="background: #1565c0;">
+            <div class="map-header" style="background: var(--admin-sidebar); border-bottom: 1px solid var(--border-color);">
                 <h3>🔄 Transfer Ride</h3>
                 <button class="close-map" onclick="closeTransferModal()">&#215;</button>
             </div>
             <div style="padding: 2rem;">
                 <input type="hidden" id="transfer-booking-id">
-                <div id="transfer-booking-info" style="background:#f4f6fb; border-radius:12px; padding:1rem; margin-bottom:1.5rem; font-size:0.9rem; color:#333;"></div>
+                <div id="transfer-booking-info" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius:12px; padding:1rem; margin-bottom:1.5rem; font-size:0.9rem; color:var(--text-main);"></div>
                 <div class="input-group" style="margin-bottom:1.5rem;">
                     <label>Select New Driver</label>
-                    <select id="transfer-driver-select" style="width:100%; padding:0.85rem 1rem; border-radius:10px; border:1px solid rgba(0,0,0,0.1); font-family:inherit; font-size:1rem;">
+                    <select id="transfer-driver-select" style="width:100%; padding:0.85rem 1rem; border-radius:10px; font-family:inherit; font-size:1rem;">
                         <option value="">-- Loading drivers... --</option>
                     </select>
                 </div>
-                <button class="btn btn-primary btn-large" onclick="submitTransfer()" style="background:#1565c0;">Confirm Transfer</button>
+                <button class="btn btn-primary btn-large" onclick="submitTransfer()" style="background: var(--primary-red); border: none;">Confirm Transfer</button>
             </div>
         </div>
     </div>
@@ -1201,12 +1276,12 @@
     <!-- Password Reset Modal -->
     <div id="password-modal" class="map-modal" style="display: none;">
         <div class="map-modal-content" style="max-width: 400px;">
-            <div class="map-header" style="background: #f39c12;">
+            <div class="map-header" style="background: var(--admin-sidebar); border-bottom: 1px solid var(--border-color);">
                 <h3>🔐 Reset Password</h3>
                 <button class="close-map" onclick="closePasswordModal()">&#215;</button>
             </div>
             <div style="padding: 2rem;">
-                <p id="password-target-name" style="margin-bottom: 1.5rem; font-weight: 600; color: #555;"></p>
+                <p id="password-target-name" style="margin-bottom: 1.5rem; font-weight: 600; color: var(--text-muted);"></p>
                 <form id="password-reset-form">
                     <input type="hidden" id="pass-target-type">
                     <input type="hidden" id="pass-target-id">
@@ -1305,11 +1380,11 @@
                                     <td data-label="Booking ID">#B${b.id}</td>
                                     <td data-label="Customer">
                                         <strong>${b.customer_name}</strong>
-                                        ${b.vendor_id ? `<span style="font-size:0.6rem; color:#1565c0; font-weight:800; margin-left:5px;">(VENDOR)</span>` : ''}<br>
+                                        ${b.vendor_id ? `<span style="font-size:0.6rem; color:var(--info-blue); font-weight:800; margin-left:5px;">(VENDOR)</span>` : ''}<br>
                                         <a href="tel:${b.customer_phone}" style="font-size:0.8rem; color:var(--primary-red); text-decoration:none; font-weight:700;">${b.customer_phone || ''}</a>
                                     </td>
                                     <td data-label="Route" style="padding: 1.5rem; text-align: left;">
-                                        <span style="font-size:0.65rem; font-weight:800; color:#B71C1C; text-transform:uppercase; background:#fbe9e7; padding:2px 6px; border-radius:4px; margin-bottom:0.3rem; display:inline-block;">${(b.trip_type === 'round' ? 'Round Trip' : (b.trip_type === 'rental' ? 'Local Rental' : (b.trip_type || 'One Way').replace('_', ' ')))}</span><br>
+                                        <span style="font-size:0.65rem; font-weight:800; color:var(--primary-red); text-transform:uppercase; background:rgba(183, 28, 28, 0.15); padding:2px 6px; border-radius:4px; margin-bottom:0.3rem; display:inline-block;">${(b.trip_type === 'round' ? 'Round Trip' : (b.trip_type === 'rental' ? 'Local Rental' : (b.trip_type || 'One Way').replace('_', ' ')))}</span><br>
                                         ${b.pickup_loc} → ${b.drop_loc}
                                     </td>
                                     <td data-label="Status"><span class="status-tag status-${b.status}">${b.status}</span></td>
@@ -1373,9 +1448,9 @@
                                     <td data-label="ID">#B${b.id}</td>
                                     <td data-label="Pilot">
                                         <strong>${b.driver_name || 'Pilot'}</strong><br>
-                                        <span style="font-size:0.8rem; color:#888">${b.customer_name} (#B${b.id})</span>
+                                        <span style="font-size:0.8rem; color:var(--text-muted)">${b.customer_name} (#B${b.id})</span>
                                     </td>
-                                    <td data-label="Reason" style="color:#d32f2f; font-weight:700;">${b.cancel_reason || 'No Reason Provided'}</td>
+                                    <td data-label="Reason" style="color:var(--danger-red); font-weight:700;">${b.cancel_reason || 'No Reason Provided'}</td>
                                     <td data-label="Actions">
                                         <button class="action-btn" style="color:#28a745" onclick="approveCancel(${b.id})">Approve Abort</button>
                                         <button class="action-btn" style="color:#dc3545; margin-left:10px" onclick="rejectCancel(${b.id})">Reject</button>
@@ -1397,10 +1472,10 @@
                         if (b.vendor_id) {
                             financialInfo = `
                                 <div style="font-size:0.85rem;">
-                                    <span style="color:#2e7d32; font-weight:700;">Profit: ₹${markupNum.toFixed(2)}</span><br>
-                                    <span style="color:#666;">Base: ₹${baseFare.toFixed(2)}</span><br>
+                                    <span style="color:var(--success-green); font-weight:700;">Profit: ₹${markupNum.toFixed(2)}</span><br>
+                                    <span style="color:var(--text-muted);">Base: ₹${baseFare.toFixed(2)}</span><br>
                                     <strong style="color:var(--primary-red)">Total: ₹${fareNum.toFixed(2)}</strong>
-                                    <div style="font-size:0.65rem; color:#1565c0; font-weight:800; margin-top:4px;">VENDOR: ${b.vendor_business_name || 'PARTNER'}</div>
+                                    <div style="font-size:0.65rem; color:var(--info-blue); font-weight:800; margin-top:4px;">VENDOR: ${b.vendor_business_name || 'PARTNER'}</div>
                                 </div>
                             `;
                         }
@@ -1413,12 +1488,12 @@
                                     <a href="tel:${b.customer_phone}" style="font-size:0.8rem; color:var(--primary-red); text-decoration:none; font-weight:700;">${b.customer_phone}</a>
                                 </td>
                                 <td data-label="Details" style="padding: 1.5rem; text-align: left;">
-                                    <span style="font-size:0.65rem; font-weight:800; color:#B71C1C; text-transform:uppercase; background:#fbe9e7; padding:2px 6px; border-radius:4px; margin-bottom:0.3rem; display:inline-block;">${(b.trip_type === 'round' ? 'Round Trip' : (b.trip_type === 'rental' ? 'Local Rental' : (b.trip_type || 'One Way').replace('_', ' ')))}</span><br>
+                                    <span style="font-size:0.65rem; font-weight:800; color:var(--primary-red); text-transform:uppercase; background:rgba(183, 28, 28, 0.15); padding:2px 6px; border-radius:4px; margin-bottom:0.3rem; display:inline-block;">${(b.trip_type === 'round' ? 'Round Trip' : (b.trip_type === 'rental' ? 'Local Rental' : (b.trip_type || 'One Way').replace('_', ' ')))}</span><br>
                                     <strong>${b.pickup_loc}</strong><br>
-                                    <span style="font-size:0.8rem; color:#888">${b.drop_loc}</span><br>
+                                    <span style="font-size:0.8rem; color:var(--text-muted)">${b.drop_loc}</span><br>
                                     ${b.trip_type === 'rental' && b.start_odometer ? `
-                                        <div style="margin-top:0.5rem; font-size:0.75rem; background:#fff3e0; padding:8px; border-radius:8px; border:1px solid #ffe0b2;">
-                                            <div style="font-weight:800; color:#e65100; font-size:0.65rem; text-transform:uppercase; margin-bottom:4px;">Rental Audit</div>
+                                        <div style="margin-top:0.5rem; font-size:0.75rem; background:rgba(255, 159, 10, 0.05); padding:8px; border-radius:8px; border:1px solid rgba(255, 159, 10, 0.15);">
+                                            <div style="font-weight:800; color:var(--warning-amber); font-size:0.65rem; text-transform:uppercase; margin-bottom:4px;">Rental Audit</div>
                                             <b>Odo:</b> ${b.start_odometer} - ${b.end_odometer || '...'} <br>
                                             ${b.journey_start_time && b.journey_end_time ? `<b>Time:</b> ${((new Date(b.journey_end_time) - new Date(b.journey_start_time)) / (1000 * 60 * 60)).toFixed(2)} Hrs` : ''}
                                         </div>
@@ -1428,7 +1503,7 @@
                                 <td data-label="Driver">${b.driver_name || '<span style="color:#aaa">Unassigned</span>'}</td>
                                 <td data-label="Status"><span class="status-tag status-${b.status}">${b.status}</span></td>
                                 <td data-label="Abort">${['pending', 'assigned'].includes(b.status) ? `<button class="action-btn" onclick="cancelBooking(${b.id})">Cancel Mission</button>` : '<span style="color:#ccc; font-size:0.8rem;">—</span>'}</td>
-                                <td data-label="Transfer">${isAssigned ? `<button class="action-btn" style="color:#1565c0; font-weight:700;" onclick='openTransferModal(${b.id}, ${JSON.stringify(b.driver_name || "Unassigned")}, ${JSON.stringify(b.pickup_loc)}, ${JSON.stringify(b.drop_loc)})'>🔄 Transfer</button>` : '<span style="color:#ccc; font-size:0.8rem;">—</span>'}</td>
+                                <td data-label="Transfer">${isAssigned ? `<button class="action-btn" style="color:var(--info-blue); font-weight:700;" onclick='openTransferModal(${b.id}, ${JSON.stringify(b.driver_name || "Unassigned")}, ${JSON.stringify(b.pickup_loc)}, ${JSON.stringify(b.drop_loc)})'>🔄 Transfer</button>` : '<span style="color:#ccc; font-size:0.8rem;">—</span>'}</td>
                             </tr>
                         `;
                     });
@@ -1586,7 +1661,7 @@
                                 <td data-label="Partner ID">${v.vendor_id}</td>
                                 <td data-label="Business Details">
                                     <strong>${v.business_name}</strong><br>
-                                    <span style="font-size:0.85rem; color:#666">${v.name}</span>
+                                    <span style="font-size:0.85rem; color:var(--text-muted)">${v.name}</span>
                                 </td>
                                 <td data-label="Contact Info">
                                     <div style="font-size:0.85rem;">
@@ -1600,8 +1675,8 @@
                                     </span>
                                 </td>
                                 <td data-label="Actions">
-                                    <button class="action-btn" style="color:#888; margin-right:10px;" onclick='openEditVendorModal(${JSON.stringify(v).replace(/"/g, "&quot;")})'>Edit</button>
-                                    <button class="action-btn" style="color:#888" onclick="deleteVendor(${v.id})">Revoke</button>
+                                    <button class="action-btn" style="color:var(--text-muted); margin-right:10px;" onclick='openEditVendorModal(${JSON.stringify(v).replace(/"/g, "&quot;")})'>Edit</button>
+                                    <button class="action-btn" style="color:var(--text-muted)" onclick="deleteVendor(${v.id})">Revoke</button>
                                 </td>
                             </tr>
                         `;
@@ -1648,12 +1723,18 @@
             // Update button styles
             const buttons = document.querySelectorAll('#fleet .btn');
             buttons.forEach(btn => {
-                if (btn.innerText.toLowerCase().includes(sectionId.replace('-', ' '))) {
-                    btn.style.background = 'var(--admin-sidebar)';
+                const text = btn.innerText.toLowerCase();
+                const matched = (sectionId === 'active-pilots' && text.includes('active')) ||
+                                (sectionId === 'pending-apps' && text.includes('pending')) ||
+                                (sectionId === 'onboarding-history' && text.includes('history'));
+                if (matched) {
+                    btn.style.background = 'var(--primary-red)';
                     btn.style.color = 'white';
+                    btn.style.border = 'none';
                 } else {
-                    btn.style.background = '#eee';
-                    btn.style.color = '#333';
+                    btn.style.background = 'rgba(255, 255, 255, 0.03)';
+                    btn.style.color = 'var(--text-muted)';
+                    btn.style.border = '1px solid var(--border-color)';
                 }
             });
         }

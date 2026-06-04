@@ -1,998 +1,2794 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CityRideTaxi | Driver Portal</title>
+    <title>CityRide Partner | Driver Command Center</title>
     <link rel="icon" type="image/png" href="logo.png">
+    
+    <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    <script src="config.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-    <!-- Leaflet for Mission Tracking -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-    <!-- Phosphor Icons & SweetAlert2 -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Chart.js for Premium Earnings Chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- SweetAlert2 for Alerts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- API Config -->
+    <script src="config.js"></script>
+
     <style>
-        .driver-container {
-            padding: 120px 0;
-            background: #f4f4f4;
-            min-height: 100vh;
+        :root {
+            --bg-dark: #090a0f;
+            --bg-card: #14161d;
+            --accent-brand: #B71C1C;
+            --accent-brand-glow: rgba(183, 28, 28, 0.2);
+            --text-white: #ffffff;
+            --text-gray: #8e9297;
+            --text-muted: #53575d;
+            --border-color: rgba(255, 255, 255, 0.06);
+            --danger-red: #ff3b30;
+            --warning-amber: #ff9f0a;
+            --success-green: #34c759;
+            --font-family: 'Outfit', sans-serif;
         }
 
-        #mission-map {
-            height: 400px;
-            width: 100%;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-white);
+            overflow: hidden; /* Lock main body scrolling */
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        /* Phone wrapper for desktop visualization, full bleed on mobile */
+        .app-container {
+            max-width: 480px;
+            margin: 0 auto;
+            height: 100%;
+            background: var(--bg-dark);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            overflow: hidden; /* Contain scrolling content */
+        }
+
+        /* Top Header Navigation Bar */
+        .top-header {
+            background: rgba(14, 16, 22, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-img {
+            height: 32px;
+            width: auto;
+        }
+
+        .logo-text {
+            font-weight: 800;
+            font-size: 1.1rem;
+            letter-spacing: 0.5px;
+        }
+
+        .logo-text span {
+            color: var(--accent-brand);
+        }
+
+        .profile-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-white);
+            padding: 6px 12px;
             border-radius: 20px;
-            border: 4px solid var(--white);
-            box-shadow: var(--shadow-md);
-            margin-top: 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .profile-btn:hover {
+            border-color: var(--accent-brand);
+        }
+
+        /* Duty Status Bar */
+        .duty-status-bar {
+            background: #101115;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .driver-info-badge {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .driver-info-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .driver-info-car {
+            font-size: 0.75rem;
+            color: var(--text-gray);
+        }
+
+        /* Toggle Duty Button */
+        .duty-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 800;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        .duty-toggle.offline {
+            background: #20222b;
+            color: var(--text-gray);
+            border: 1px solid var(--border-color);
+        }
+
+        .duty-toggle.online {
+            background: var(--accent-brand);
+            color: #000000;
+            box-shadow: 0 0 15px var(--accent-brand-glow);
+        }
+
+        .duty-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .offline .duty-dot {
+            background: var(--text-muted);
+        }
+
+        .online .duty-dot {
+            background: #000;
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.5; }
+        }
+
+        /* Radar pulses overlay for maps when online */
+        .online-scanning-bar {
+            background: rgba(183, 28, 28, 0.06);
+            border-bottom: 1px solid rgba(183, 28, 28, 0.2);
+            padding: 8px 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent-brand);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .scanning-radar {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent-brand);
+            position: relative;
+        }
+
+        .scanning-radar::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            border: 1.5px solid var(--accent-brand);
+            border-radius: 50%;
+            animation: pulse-radar 1.5s infinite;
+        }
+
+        @keyframes pulse-radar {
+            0% { transform: scale(0.6); opacity: 1; }
+            100% { transform: scale(1.8); opacity: 0; }
+        }
+
+        /* Main Viewport Content */
+        .view-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            gap: 12px;
+            overflow-y: auto; /* Internal scrolling only */
+            min-height: 0; /* Let flex container shrink */
+            padding-bottom: 85px; /* Space for navbar */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .view-content::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-view {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+        }
+
+        /* Hidden class */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Offline Hero Banner */
+        .offline-hero {
+            background: linear-gradient(180deg, var(--bg-card) 0%, rgba(20, 22, 29, 0.5) 100%);
+            border-radius: 24px;
+            padding: 30px 20px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            margin-top: 10px;
+        }
+
+        .offline-hero-icon {
+            font-size: 3.5rem;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            animation: bounce-soft 3s infinite ease-in-out;
+        }
+
+        @keyframes bounce-soft {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .offline-hero-title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .offline-hero-desc {
+            font-size: 0.85rem;
+            color: var(--text-gray);
+            line-height: 1.4;
+            max-width: 280px;
+            margin: 0 auto;
+        }
+
+        /* Cards and Panels */
+        .glass-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .card-title {
+            font-size: 0.85rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-gray);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card-title i {
+            font-size: 1.1rem;
+            color: var(--accent-brand);
+        }
+
+        /* Quick Stats Row */
+        .quick-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .quick-stat-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 10px 8px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .quick-stat-val {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--text-white);
+        }
+
+        .quick-stat-lbl {
+            font-size: 0.6rem;
+            color: var(--text-gray);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* Leaflet Map integration */
+        .map-section {
+            position: relative;
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.5);
+            background: #111;
+        }
+
+        #dashboard-map {
+            height: 250px;
+            width: 100%;
             z-index: 10;
         }
 
-        /* Radar Pulse Animation */
-        .radar-pulse {
-            position: relative;
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            background: #10B981;
-            border-radius: 50%;
-            margin-right: 10px;
+        /* GPS Status overlay */
+        .gps-status-overlay {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 100;
+            background: rgba(13, 14, 18, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color);
+            padding: 6px 14px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
         }
 
-        .radar-pulse::after {
+        .gps-status-indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .gps-status-indicator.searching { background: var(--warning-amber); animation: pulse-dot 1s infinite; }
+        .gps-status-indicator.locked { background: var(--success-green); }
+        .gps-status-indicator.disabled { background: var(--danger-red); }
+
+        /* Floating Actions on Map */
+        .map-floating-btn {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            z-index: 100;
+            background: var(--danger-red);
+            color: var(--text-white);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.85rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(255, 59, 48, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .map-floating-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Ola Style Booking Modal Overlay (Ping Screen) */
+        .ping-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(9, 10, 15, 0.98);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 30px 24px;
+            animation: slideInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideInUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .ping-header {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .ping-subtitle {
+            font-size: 0.75rem;
+            color: var(--accent-brand);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .ping-title {
+            font-size: 1.6rem;
+            font-weight: 800;
+        }
+
+        /* Ping Timer Countdown Ring */
+        .ping-timer-wrap {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 25px 0;
+            position: relative;
+        }
+
+        .ping-timer-svg {
+            transform: rotate(-90deg);
+        }
+
+        .ping-timer-circle-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 8;
+        }
+
+        .ping-timer-circle-val {
+            fill: none;
+            stroke: var(--accent-brand);
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s linear;
+        }
+
+        .ping-timer-number {
+            position: absolute;
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: var(--text-white);
+        }
+
+        /* Ping Cards for locations */
+        .ping-details-card {
+            background: #181a20;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .ping-metrics-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 12px;
+        }
+
+        .ping-metric {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .ping-metric-label {
+            font-size: 0.65rem;
+            color: var(--text-gray);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .ping-metric-val {
+            font-size: 1.2rem;
+            font-weight: 800;
+        }
+
+        .ping-metric-val.fare {
+            color: var(--accent-brand);
+        }
+
+        .ping-route-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+            padding-left: 20px;
+        }
+
+        .ping-route-flow::before {
+            content: '';
+            position: absolute;
+            top: 6px;
+            left: 5px;
+            bottom: 6px;
+            width: 1px;
+            border-left: 2px dashed var(--text-muted);
+        }
+
+        .ping-route-node {
+            position: relative;
+        }
+
+        .ping-route-dot {
+            position: absolute;
+            left: -20px;
+            top: 5px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .ping-route-dot.pickup { background: var(--accent-brand); border: 2.5px solid #000; }
+        .ping-route-dot.drop { background: var(--danger-red); border: 2.5px solid #000; }
+
+        .ping-route-lbl {
+            font-size: 0.65rem;
+            color: var(--text-gray);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .ping-route-val {
+            font-size: 0.9rem;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+
+        .ping-passenger-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Ping Button Group */
+        .ping-btn-group {
+            display: grid;
+            grid-template-columns: 1fr 2.5fr;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            border-radius: 16px;
+            padding: 16px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            cursor: pointer;
+            border: none;
+            text-align: center;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #20222b;
+            color: var(--text-gray);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-primary {
+            background: var(--accent-brand);
+            color: #000;
+            box-shadow: 0 6px 20px var(--accent-brand-glow);
+        }
+
+        /* Active Ride Widget (Workflow) */
+        .active-ride-card {
+            background: #131418;
+            border-left: 4px solid var(--accent-brand);
+            border-radius: 16px;
+        }
+
+        .active-ride-status {
+            font-size: 0.7rem;
+            background: rgba(183, 28, 28, 0.1);
+            color: var(--accent-brand);
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: 800;
+            display: inline-block;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .active-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            margin: 10px 0;
+        }
+
+        .active-metric-box {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .active-metric-lbl {
+            font-size: 0.6rem;
+            color: var(--text-gray);
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .active-metric-val {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: var(--text-white);
+        }
+
+        .active-metric-val.green {
+            color: var(--accent-brand);
+        }
+
+        .navigation-row {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .nav-btn {
+            flex: 1;
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            border-radius: 8px;
+            background: #20222b;
+            color: var(--text-white);
+            border: 1px solid var(--border-color);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            text-decoration: none;
+        }
+
+        .nav-btn.pickup {
+            border-color: rgba(183, 28, 28, 0.3);
+            color: var(--accent-brand);
+        }
+
+        .nav-btn.drop {
+            border-color: rgba(255, 59, 48, 0.3);
+            color: var(--danger-red);
+        }
+
+        /* Performance Tab UI */
+        .chart-container {
+            position: relative;
+            height: 140px;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        /* Performance Rings */
+        .performance-rings {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 8px;
+        }
+
+        .perf-item {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .perf-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.8rem;
+            position: relative;
+        }
+
+        .perf-circle.rating { border-color: var(--accent-brand); color: var(--accent-brand); }
+        .perf-circle.accept { border-color: var(--success-green); color: var(--success-green); }
+        .perf-circle.cancel { border-color: var(--danger-red); color: var(--danger-red); }
+
+        .perf-label {
+            font-size: 0.6rem;
+            color: var(--text-gray);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* Wallet tab ledger */
+        .wallet-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .wallet-bal-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .wallet-bal-num {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text-white);
+        }
+
+        .wallet-bal-num span {
+            color: var(--accent-brand);
+        }
+
+        .payout-btn {
+            background: var(--accent-brand);
+            color: #000;
+            font-weight: 800;
+            font-size: 0.8rem;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px var(--accent-brand-glow);
+        }
+
+        .payout-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .ledger-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .ledger-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ledger-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .ledger-desc {
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .ledger-date {
+            font-size: 0.65rem;
+            color: var(--text-gray);
+        }
+
+        .ledger-amount {
+            font-weight: 800;
+            font-size: 0.95rem;
+        }
+
+        .ledger-amount.credit { color: var(--success-green); }
+        .ledger-amount.debit { color: var(--danger-red); }
+
+        /* Document Checklist list */
+        .doc-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .doc-item {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .doc-label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .doc-label i {
+            font-size: 1.15rem;
+            color: var(--accent-brand);
+        }
+
+        .doc-status-badge {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .doc-status-badge.verified { background: rgba(52, 199, 89, 0.1); color: var(--success-green); }
+        .doc-status-badge.pending { background: rgba(255, 159, 10, 0.1); color: var(--warning-amber); }
+
+        /* History list styles */
+        .history-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: transform 0.2s ease;
+        }
+
+        .history-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            padding-bottom: 8px;
+        }
+
+        .history-id {
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: var(--text-white);
+        }
+
+        .history-status {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .history-status.completed { background: rgba(52, 199, 89, 0.1); color: var(--success-green); }
+        .history-status.finished { background: rgba(183, 28, 28, 0.1); color: var(--accent-brand); }
+        .history-status.cancelled { background: rgba(255, 59, 48, 0.1); color: var(--danger-red); }
+
+        .history-datetime {
+            font-size: 0.7rem;
+            color: var(--text-gray);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .history-route {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.75rem;
+            padding-left: 4px;
+        }
+
+        .history-node {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .history-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            margin-top: 5px;
+        }
+
+        .history-dot.pickup { background: var(--success-green); }
+        .history-dot.drop { background: var(--danger-red); }
+
+        .history-addr {
+            color: var(--text-white);
+            line-height: 1.3;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: calc(100% - 20px);
+        }
+
+        .history-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            padding-top: 8px;
+            margin-top: 2px;
+        }
+
+        .history-metrics {
+            display: flex;
+            gap: 12px;
+            font-size: 0.75rem;
+            color: var(--text-gray);
+            font-weight: 600;
+        }
+
+        .history-metrics span span {
+            color: var(--text-white);
+            font-weight: 700;
+        }
+
+        .history-fare {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--accent-brand);
+        }
+
+        /* Bottom Tab Navigator Bar */
+        .bottom-nav {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: rgba(14, 16, 22, 0.96);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-gray);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            width: 20%;
+        }
+
+        .nav-item i {
+            font-size: 1.3rem;
+        }
+
+        .nav-item-lbl {
+            font-size: 0.65rem;
+            font-weight: 700;
+        }
+
+        .nav-item.active {
+            color: var(--accent-brand);
+        }
+
+        /* Offline alert banner inside the active view */
+        .offline-notice-banner {
+            background: rgba(255, 59, 48, 0.08);
+            border: 1px solid rgba(255, 59, 48, 0.2);
+            color: var(--danger-red);
+            border-radius: 16px;
+            padding: 12px 16px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* SweetAlert2 customizing for luxury dark mode */
+        .swal2-popup.dark-popup {
+            background: var(--bg-card) !important;
+            color: var(--text-white) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 24px !important;
+        }
+
+        .swal2-title.dark-popup-title {
+            color: var(--text-white) !important;
+            font-family: var(--font-family) !important;
+        }
+
+        .swal2-html-container.dark-popup-html {
+            color: var(--text-gray) !important;
+            font-family: var(--font-family) !important;
+        }
+
+        .swal2-confirm.dark-popup-confirm {
+            background-color: var(--accent-brand) !important;
+            color: #000 !important;
+            font-weight: 700 !important;
+            border-radius: 12px !important;
+        }
+
+        .swal2-cancel.dark-popup-cancel {
+            background-color: #20222b !important;
+            color: var(--text-gray) !important;
+            border-radius: 12px !important;
+        }
+
+        /* Circular route markers for map */
+        .map-marker-pulse {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2.5px solid white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .map-marker-pulse.driver { background: var(--accent-brand); }
+        .map-marker-pulse.driver::after {
             content: '';
             position: absolute;
             top: -4px;
             left: -4px;
             right: -4px;
             bottom: -4px;
-            border: 2px solid #10B981;
+            border: 2px solid var(--accent-brand);
             border-radius: 50%;
-            animation: pulse 2s infinite;
-            opacity: 0;
+            animation: pulse-radar 2s infinite;
         }
 
-        @keyframes pulse {
-            0% {
-                transform: scale(0.5);
-                opacity: 0;
-            }
-
-            50% {
-                opacity: 1;
-            }
-
-            100% {
-                transform: scale(1.5);
-                opacity: 0;
-            }
+        /* Opportunity cards style */
+        .opp-card-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
+        .opp-card {
+            background: #181a20;
+            border-radius: 18px;
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
-        .mission-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4rem;
-        }
-
-        .panel {
-            background: white;
-            border-radius: 24px;
-            padding: 2.5rem;
-            box-shadow: var(--shadow-md);
-            border: 1px solid var(--accents);
-        }
-
-        .job-card {
-            background: #fafafa;
-            border: 1px solid #eee;
-            padding: 1.5rem;
-            border-radius: 16px;
-            margin-bottom: 1.5rem;
-        }
-
-        /* GPS Status Badges */
-        .gps-badge {
-            display: inline-flex;
+        .opp-card-row {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 50px;
-            font-size: 0.75rem;
+        }
+
+        .opp-badge-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .opp-badge {
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            border-radius: 6px;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        .gps-locked { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
-        .gps-searching { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
-        .gps-disabled { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
-        
-        .pulse-soft {
-            animation: pulse-soft 2s infinite;
-        }
-        @keyframes pulse-soft {
-            0%, 100% { opacity: 0.7; transform: scale(0.98); }
-            50% { opacity: 1; transform: scale(1); }
         }
 
-        .nav-link-btn {
-            padding: 0.5rem 1rem;
+        .opp-badge.vehicle { background: rgba(255, 255, 255, 0.05); color: var(--text-gray); }
+        .opp-badge.type { background: rgba(183, 28, 28, 0.1); color: var(--accent-brand); }
+        .opp-badge.vendor { background: rgba(52, 199, 89, 0.1); color: var(--success-green); }
+
+        .opp-fare {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--accent-brand);
+        }
+
+        .opp-loc-line {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
             font-size: 0.8rem;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            border-radius: 12px;
-            text-decoration: none;
-            transition: all 0.2s ease;
-        }
-        .nav-link-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
 
-        .customer-info {
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px dashed #ccc;
-            font-size: 0.9rem;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 0.3rem 0.8rem;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            margin-bottom: 0.5rem;
-        }
-
-        @media (max-width: 900px) {
-            .grid, .mission-grid {
-                grid-template-columns: 1fr;
-            }
-            .mission-grid {
-                gap: 2rem !important;
-            }
-            .support-grid {
-                grid-template-columns: 1fr !important;
-                gap: 2rem !important;
-                text-align: center;
-            }
-            .support-grid > div {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-            }
-        }
-
-        .support-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
-            align-items: center;
-        }
-
-        /* Toast Notifications */
-
-        @keyframes fadeOut {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(50%); opacity: 0; }
+        .opp-dist {
+            font-size: 0.75rem;
+            color: var(--text-gray);
         }
     </style>
 </head>
+<body>
 
-<body style="overflow: hidden;"> <!-- Lock scroll during splash -->
-    <div id="splash-screen">
-        <div class="splash-grid"></div>
-        <div class="splash-orb"></div>
-        <div class="splash-ring"></div>
-        <div class="splash-ring splash-ring-2"></div>
-        <div class="splash-logo-wrap">
-            <img src="logo.png" class="splash-logo" alt="CityRideTaxi">
-            <div class="splash-brand"><span>CityRide</span>Taxi</div>
-            <div class="splash-tagline">Premium Cab Booking</div>
-        </div>
-        <div class="splash-road-wrap">
-            <div class="splash-road"></div>
-            <svg class="splash-car" width="64" height="28" viewBox="0 0 64 28" fill="none">
-                <rect x="8" y="12" width="48" height="12" rx="4" fill="#dc143c"/>
-                <path d="M18 12 L22 4 L42 4 L46 12Z" fill="#c01030"/>
-                <rect x="23" y="5" width="8" height="6" rx="1" fill="rgba(150,220,255,0.7)"/>
-                <rect x="33" y="5" width="8" height="6" rx="1" fill="rgba(150,220,255,0.7)"/>
-                <circle cx="18" cy="24" r="4" fill="#1a1a1a" stroke="#555" stroke-width="1.5"/>
-                <circle cx="18" cy="24" r="1.5" fill="#888"/>
-                <circle cx="46" cy="24" r="4" fill="#1a1a1a" stroke="#555" stroke-width="1.5"/>
-                <circle cx="46" cy="24" r="1.5" fill="#888"/>
-                <ellipse cx="57" cy="16" rx="5" ry="3" fill="rgba(255,220,100,0.5)"/>
-                <rect x="54" y="14" width="3" height="4" rx="1" fill="#ffd700"/>
-            </svg>
-        </div>
-        <div class="splash-progress-wrap"><div class="splash-progress-bar"></div></div>
-        <div class="splash-status">Dispatching Systems…</div>
-    </div>
-    <header class="header">
-        <nav class="container nav">
-            <div class="logo" onclick="window.location.href='/'" style="cursor:pointer;">
-                <img src="logo.png" alt="CityRideTaxi" style="height: 50px; width: auto;">
+    <div class="app-container">
+        
+        <!-- Top Sticky Header -->
+        <header class="top-header">
+            <div class="logo-wrap" onclick="window.location.href='/'" style="cursor: pointer;">
+                <img src="logo.png" alt="CityRide" class="logo-img">
+                <div class="logo-text">CITYRIDE<span>PARTNER</span></div>
             </div>
-            <div class="driver-nav-actions">
-                <button class="btn btn-primary" onclick="logoutUser()"
-                    style="padding: 0.6rem 1.2rem; font-size: 0.9rem; background: var(--primary-red); border: none;">Logout</button>
+            <button class="profile-btn" onclick="logoutUser()">
+                <i class="ph-bold ph-power"></i> Logout
+            </button>
+        </header>
+
+        <!-- Duty Status Toggle Bar -->
+        <div class="duty-status-bar">
+            <div class="driver-info-badge">
+                <div class="driver-info-name" id="driver-name">Loading...</div>
+                <div class="driver-info-car" id="driver-car">Vehicle: Loading...</div>
+            </div>
+            <div class="duty-toggle online" id="duty-toggle-btn" onclick="toggleDutyStatus()">
+                <span class="duty-dot"></span>
+                <span id="duty-status-txt">Online</span>
+            </div>
+        </div>
+
+        <!-- Scanning Radar Bar when Online -->
+        <div class="online-scanning-bar" id="scanning-radar-bar">
+            <div class="scanning-radar"></div>
+            <span>ONLINE - Scanning for bookings...</span>
+        </div>
+
+        <!-- Main Viewport Area -->
+        <main class="view-content">
+
+            <!-- TAB 1: RIDES (DEFAULT VIEW) -->
+            <section id="view-rides" class="tab-view">
+
+                <!-- Offline Hero Dashboard Standby -->
+                <div class="offline-hero hidden" id="offline-hero-panel">
+                    <div class="offline-hero-icon"><i class="ph-bold ph-steering-wheel"></i></div>
+                    <div class="offline-hero-title">Ready to Earn?</div>
+                    <div class="offline-hero-desc">Toggle the switch at the top to go ONLINE. You will start receiving live ride pings.</div>
+                </div>
+
+                <!-- Active Ongoing Ride Tracking Widget -->
+                <div class="glass-card active-ride-card hidden" id="active-mission-panel">
+                    <div class="card-header">
+                        <div class="active-ride-status" id="active-ride-badge">En Route to Pickup</div>
+                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-gray);" id="active-ride-id">ID: #B123</span>
+                    </div>
+
+                    <div style="font-size: 1.1rem; font-weight: 800;" id="active-passenger-name">Passenger Name</div>
+                    
+                    <div class="active-metrics-grid">
+                        <div class="active-metric-box">
+                            <span class="active-metric-lbl">Est. Fare</span>
+                            <span class="active-metric-val green" id="active-fare-val">₹0</span>
+                        </div>
+                        <div class="active-metric-box">
+                            <span class="active-metric-lbl">Trip Distance</span>
+                            <span class="active-metric-val" id="active-dist-val">0 KM</span>
+                        </div>
+                        <div class="active-metric-box">
+                            <span class="active-metric-lbl">Traveled</span>
+                            <span class="active-metric-val" id="active-actual-dist">0.0 KM</span>
+                        </div>
+                        <div class="active-metric-box">
+                            <span class="active-metric-lbl">Waiting Extra</span>
+                            <span class="active-metric-val" id="active-waiting-charge">₹0</span>
+                        </div>
+                    </div>
+
+                    <!-- Location flow -->
+                    <div class="ping-route-flow" style="margin-bottom: 12px;">
+                        <div class="ping-route-node">
+                            <span class="ping-route-dot pickup"></span>
+                            <div class="ping-route-lbl">Pickup Location</div>
+                            <div class="ping-route-val" id="active-pickup-loc">Address line</div>
+                        </div>
+                        <div class="ping-route-node">
+                            <span class="ping-route-dot drop"></span>
+                            <div class="ping-route-lbl">Dropoff Location</div>
+                            <div class="ping-route-val" id="active-drop-loc">Address line</div>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Action row -->
+                    <div class="navigation-row">
+                        <a href="#" id="nav-pickup-btn" target="_blank" class="nav-btn pickup">
+                            <i class="ph-bold ph-navigation-arrow"></i> Nav Pickup
+                        </a>
+                        <a href="#" id="nav-drop-btn" target="_blank" class="nav-btn drop">
+                            <i class="ph-bold ph-navigation-arrow"></i> Nav Drop
+                        </a>
+                        <a href="#" id="call-passenger-btn" class="nav-btn">
+                            <i class="ph-bold ph-phone"></i> Call Client
+                        </a>
+                    </div>
+
+                    <!-- Operational status buttons -->
+                    <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;" id="active-op-btns">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+
+                <!-- Live Map View when Online -->
+                <div class="map-section" id="map-tracking-panel">
+                    <div class="gps-status-overlay">
+                        <span class="gps-status-indicator locked" id="gps-status-dot"></span>
+                        <span id="gps-status-text">Acquiring GPS...</span>
+                    </div>
+                    
+                    <div id="dashboard-map"></div>
+                    
+                    <button class="map-floating-btn" onclick="triggerEmergencySOS()" title="Emergency Trigger">
+                        SOS
+                    </button>
+                </div>
+
+                <!-- Available Live Opportunities List -->
+                <div class="glass-card hidden" id="opportunities-panel" style="margin-top: 10px;">
+                    <div class="card-header">
+                        <div class="card-title"><i class="ph-bold ph-lightning"></i> Live Ride Opportunities</div>
+                    </div>
+                    <div class="opp-card-list" id="opportunity-card-list">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+
+            </section>
+
+
+            <!-- TAB 2: EARNINGS -->
+            <section id="view-earnings" class="tab-view hidden">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="ph-bold ph-chart-bar"></i> Earnings Summary</div>
+                    </div>
+                    <div class="quick-stats-grid">
+                        <div class="quick-stat-card">
+                            <span class="quick-stat-val" id="earn-today">₹0</span>
+                            <span class="quick-stat-lbl">Today</span>
+                        </div>
+                        <div class="quick-stat-card">
+                            <span class="quick-stat-val" id="earn-week">₹0</span>
+                            <span class="quick-stat-lbl">This Week</span>
+                        </div>
+                        <div class="quick-stat-card">
+                            <span class="quick-stat-val" id="earn-totals">₹0</span>
+                            <span class="quick-stat-lbl">All-Time</span>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="earningsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Performance ratings and counts -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="ph-bold ph-gauge"></i> Performance Indicators</div>
+                    </div>
+                    <div class="performance-rings">
+                        <div class="perf-item">
+                            <div class="perf-circle rating">4.8★</div>
+                            <span class="perf-label">Rating</span>
+                        </div>
+                        <div class="perf-item">
+                            <div class="perf-circle accept">96%</div>
+                            <span class="perf-label">Acceptance</span>
+                        </div>
+                        <div class="perf-item">
+                            <div class="perf-circle cancel">2%</div>
+                            <span class="perf-label">Cancellation</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Incentive goal tracker -->
+                <div class="glass-card" style="gap: 8px;">
+                    <div class="card-header" style="margin-bottom: 5px;">
+                        <div class="card-title"><i class="ph-bold ph-gift"></i> Active Weekly Incentive</div>
+                    </div>
+                    <div style="font-size: 0.85rem; font-weight: 700; display:flex; justify-content:space-between;">
+                        <span>Complete 10 rides to earn bonus</span>
+                        <span id="incentive-progress-txt" style="color:var(--accent-brand);">0/10 Rides</span>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.04); height: 8px; border-radius: 4px; overflow:hidden; border: 1px solid var(--border-color);">
+                        <div id="incentive-progress-bar" style="background: var(--accent-brand); width: 0%; height: 100%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <div style="font-size: 0.7rem; color: var(--text-gray);">Target reward: ₹500.00 cash bonus added straight to wallet balance.</div>
+                </div>
+            </section>
+
+
+            <!-- TAB 3: WALLET -->
+            <section id="view-wallet" class="tab-view hidden">
+                <div class="glass-card">
+                    <div class="wallet-card-header">
+                        <div class="wallet-bal-wrap">
+                            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-gray); text-transform: uppercase;">Total Balance</span>
+                            <div class="wallet-bal-num"><span>₹</span><span id="wallet-balance-lbl">0.00</span></div>
+                        </div>
+                        <button class="payout-btn" onclick="triggerPayoutRequest()">Withdraw</button>
+                    </div>
+                    <div class="offline-notice-banner" style="background: rgba(183, 28, 28, 0.04); border-color: rgba(183, 28, 28, 0.15); color: var(--text-white);">
+                        <i class="ph-bold ph-shield-check" style="color:var(--accent-brand); font-size:1.1rem;"></i>
+                        <span style="font-size: 0.75rem;">10% platform commission is automatically adjusted on booking acceptance. No monthly subscription fees.</span>
+                    </div>
+                </div>
+
+                <!-- Ledger list of transactions -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="ph-bold ph-list-dashes"></i> Transaction Ledger</div>
+                    </div>
+                    <div class="ledger-list" id="transaction-ledger-list">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- TAB 4: PROFILE & DOCUMENTS -->
+            <section id="view-profile" class="tab-view hidden">
+                <!-- Driver profile detail -->
+                <div class="glass-card" style="text-align: center; display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 75px; height: 75px; border-radius: 50%; background: var(--bg-dark); border: 2.5px solid var(--accent-brand); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--accent-brand);">
+                        <i class="ph-bold ph-user-helmet"></i>
+                    </div>
+                    <div style="font-size: 1.15rem; font-weight: 800; margin-top: 5px;" id="profile-driver-name">Driver Name</div>
+                    <div style="font-size: 0.8rem; color: var(--text-gray);" id="profile-driver-phone">+91 00000 00000</div>
+                    <div style="font-size: 0.75rem; background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 8px; font-weight: 700; margin-top: 5px;" id="profile-vehicle-type">HATCHBACK</div>
+                </div>
+
+                <!-- Document Status Checklists -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="ph-bold ph-files"></i> Document Compliance</div>
+                    </div>
+                    <div class="doc-list">
+                        <div class="doc-item">
+                            <span class="doc-label"><i class="ph-bold ph-identification-card"></i> Driver's License</span>
+                            <span class="doc-status-badge verified">Verified</span>
+                        </div>
+                        <div class="doc-item">
+                            <span class="doc-label"><i class="ph-bold ph-shield-checkered"></i> Police Verification (PVC)</span>
+                            <span class="doc-status-badge verified">Verified</span>
+                        </div>
+                        <div class="doc-item">
+                            <span class="doc-label"><i class="ph-bold ph-barcode"></i> Aadhar Identification</span>
+                            <span class="doc-status-badge verified">Verified</span>
+                        </div>
+                        <div class="doc-item">
+                            <span class="doc-label"><i class="ph-bold ph-car-profile"></i> Vehicle Registration (RC)</span>
+                            <span class="doc-status-badge verified">Verified</span>
+                        </div>
+                        <div class="doc-item">
+                            <span class="doc-label"><i class="ph-bold ph-file-text"></i> Car Insurance & Permits</span>
+                            <span class="doc-status-badge verified">Verified</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- TAB 5: HISTORY -->
+            <section id="view-history" class="tab-view hidden">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="ph-bold ph-clock-counter-clockwise"></i> Ride History</div>
+                        <span id="history-count-badge" style="font-size: 0.75rem; background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 12px; font-weight: 700;">0 Trips</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;" id="history-list">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Dynamic Incoming Ping Screen Overlay (Sound, timer, map summary) -->
+        <div class="ping-overlay hidden" id="incoming-ping-screen">
+            <div class="ping-header">
+                <div class="ping-subtitle">Incoming Ride Request</div>
+                <div class="ping-title" id="ping-vehicle-type">SEDAN</div>
+            </div>
+
+            <!-- Timer ring -->
+            <div class="ping-timer-wrap">
+                <svg width="140" height="140" class="ping-timer-svg">
+                    <circle cx="70" cy="70" r="60" class="ping-timer-circle-bg"></circle>
+                    <circle cx="70" cy="70" r="60" class="ping-timer-circle-val" id="ping-timer-progress"></circle>
+                </svg>
+                <div class="ping-timer-number" id="ping-timer-lbl">15</div>
+            </div>
+
+            <!-- Details -->
+            <div class="ping-details-card">
+                <div class="ping-metrics-row">
+                    <div class="ping-metric">
+                        <span class="ping-metric-label">Estimated Fare</span>
+                        <span class="ping-metric-val fare" id="ping-fare-val">₹0</span>
+                    </div>
+                    <div class="ping-metric" style="text-align: right;">
+                        <span class="ping-metric-label">Distance</span>
+                        <span class="ping-metric-val" id="ping-dist-val">0 KM</span>
+                    </div>
+                </div>
+
+                <!-- Route info -->
+                <div class="ping-route-flow">
+                    <div class="ping-route-node">
+                        <span class="ping-route-dot pickup"></span>
+                        <div class="ping-route-lbl">Pickup</div>
+                        <div class="ping-route-val" id="ping-pickup-loc">Address line</div>
+                    </div>
+                    <div class="ping-route-node">
+                        <span class="ping-route-dot drop"></span>
+                        <div class="ping-route-lbl">Dropoff</div>
+                        <div class="ping-route-val" id="ping-drop-loc">Address line</div>
+                    </div>
+                </div>
+
+                <!-- Simulated passenger rating -->
+                <div class="ping-passenger-row">
+                    <span style="font-weight: 700;" id="ping-passenger-name">John Doe</span>
+                    <span style="color:var(--accent-brand); font-weight:800;"><i class="ph-fill ph-star"></i> 4.8 Rating</span>
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="ping-btn-group">
+                <button class="btn btn-secondary" onclick="declinePing()">Pass</button>
+                <button class="btn btn-primary" id="ping-accept-btn">Accept</button>
+            </div>
+        </div>
+
+        <!-- Bottom Tab Navigator -->
+        <nav class="bottom-nav">
+            <div class="nav-item active" onclick="switchTab('rides', this)">
+                <i class="ph-bold ph-steering-wheel"></i>
+                <span class="nav-item-lbl">Rides</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('earnings', this)">
+                <i class="ph-bold ph-chart-bar"></i>
+                <span class="nav-item-lbl">Earnings</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('wallet', this)">
+                <i class="ph-bold ph-wallet"></i>
+                <span class="nav-item-lbl">Wallet</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('history', this)">
+                <i class="ph-bold ph-clock-counter-clockwise"></i>
+                <span class="nav-item-lbl">History</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('profile', this)">
+                <i class="ph-bold ph-user-helmet"></i>
+                <span class="nav-item-lbl">Profile</span>
             </div>
         </nav>
-    </header>
 
-    <main class="driver-container">
-        <div class="container">
-            <div style="margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
-                <div>
-                    <h1>CityRide Driver: <span id="driver-name" class="text-accent">Loading...</span></h1>
-                    <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
-                        <p id="car-info" style="color: #666; margin: 0;">Vehicle: Loading...</p>
-                        <div id="gps-status-pill" class="gps-badge gps-searching pulse-soft">
-                            <i class="ph ph-gps-fixed"></i>
-                            <span id="gps-status-text">Acquiring GPS...</span>
-                        </div>
-                    </div>
-                </div>
-                <div style="background: #1a1a1a; color: white; padding: 1.5rem 2.5rem; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-left: 4px solid var(--primary-red);">
-                    <p style="margin: 0; font-size: 0.8rem; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 1px;">Wallet Balance</p>
-                    <h2 style="margin: 0.5rem 0 0 0; font-size: 2.2rem; display: flex; align-items: center; gap: 0.3rem;"><span style="color:var(--primary-red)">₹</span><span id="wallet-balance" style="color: #eee;">0.00</span></h2>
-                </div>
-            </div>
-
-            <!-- Active Mission Tracker (Copied from Dashboard) -->
-            <div id="active-mission-container" class="hidden" style="margin-bottom: 3rem;">
-                <div class="panel" style="border-left: 5px solid var(--primary-red); background: #fffcfc;">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
-                        <h3><span class="radar-pulse"></span> Mission Intelligence Radar</h3>
-                        <span id="active-status" class="badge" style="background:#CCE5FF; color:#004085; padding: 0.5rem 1rem;">TRACKING</span>
-                    </div>
-
-                    <div id="mission-map"></div>
-
-                    <div id="active-details" class="mission-grid"
-                        style="margin-top: 2rem;">
-                        <!-- Assigned dynamically -->
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid">
-                <!-- Available Jobs -->
-                <div class="panel">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                        <h3 style="margin-bottom: 0;">Available Opportunities</h3>
-                        <button class="btn btn-primary" onclick="openOpportunityModal()" style="width: 45px; height: 45px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 15px rgba(183,28,28,0.2);">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
-                        </button>
-                    </div>
-                    <div id="available-jobs">
-                        <!-- Jobs injected here -->
-                    </div>
-                </div>
-
-                <!-- My Active Rides -->
-                <div class="panel">
-                    <h3 style="margin-bottom: 2rem;">My CityRide Assignments</h3>
-                    <div id="my-jobs">
-                        <!-- My jobs injected here -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Driver Support Section -->
-            <div class="panel" style="background: var(--dark-charcoal); color: white; border: none; margin-top: 3rem;">
-                <div class="support-grid">
-                    <div>
-                        <h3 style="color: var(--primary-red); margin-bottom: 1rem;">Driver Support Center</h3>
-                        <p style="opacity: 0.8; font-size: 0.95rem;">Encountering any issues during your ride? Connect directly with our support team for immediate resolution.</p>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 1rem;">
-                        <div style="display: flex; align-items: center; gap: 1rem; text-align: left;">
-                            <div style="background: rgba(183,28,28,0.15); width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary-red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v16Z"/><path d="M12 18V6"/><path d="M8 10V6"/><path d="M16 14V6"/></svg>
-                            </div>
-                            <div>
-                                <div style="font-weight: 700;">Driver Helpline</div>
-                                <div style="color: var(--primary-red); font-weight: 800; font-size: 1.1rem;">+91 99887 76655</div>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 1rem; text-align: left;">
-                            <div style="background: rgba(255,255,255,0.1); width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                            </div>
-                            <div>
-                                <div style="font-weight: 700;">Admin Registry (Dispatch)</div>
-                                <div style="opacity: 0.8;">dispatch@cityridetaxi.com</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Opportunity Map Modal (Isolated Style) -->
-    <div id="opp-map-modal" class="tactical-modal" style="display: none;">
-        <div class="tactical-modal-inner">
-            <button onclick="closeOpportunityModal()" class="tactical-close">✕</button>
-            <div id="opportunity-map" style="width: 100%; height: 100%;"></div>
-        </div>
     </div>
 
+    <!-- Live Script -->
     <script>
-        let isMapInitialized = false;
-        let driverMap = null;
+        // State management variables
+        let isOnline = true;
+        let driverData = null;
         let gpsWatchId = null;
-        let lastBestPos = null;
-        let isGpsLocked = false;
+        let driverMap = null;
         let driverMarker = null;
+        let activeRouteLine = null;
+        let activePickupMarker = null;
+        let activeDropMarker = null;
+        let lastGpsSendTime = 0;
+        let pollingInterval = null;
+        
+        let allOpportunities = [];
+        let acceptedOpportunityId = null;
+        let activeRideObj = null;
 
-        function updateGpsUI(status, accuracy = null) {
-            const pill = document.getElementById('gps-status-pill');
-            const text = document.getElementById('gps-status-text');
-            if (!pill || !text) return;
+        // Sound System
+        let audioCtx = null;
+        let soundInterval = null;
+
+        // Chart instance
+        let earningsChartInstance = null;
+
+        // SweetAlert Custom styling helper
+        const swalDarkOpts = {
+            customClass: {
+                popup: 'dark-popup',
+                title: 'dark-popup-title',
+                htmlContainer: 'dark-popup-html',
+                confirmButton: 'dark-popup-confirm',
+                cancelButton: 'dark-popup-cancel'
+            },
+            buttonsStyling: false
+        };
+
+        // Initialize App on DOM Content Loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Verify pilot login session
+            driverData = JSON.parse(localStorage.getItem('cityride_pilot'));
+            if (!driverData) {
+                window.location.href = '/driver-login';
+                return;
+            }
+
+            // Sync driver header metrics
+            updateDriverProfileUI();
             
-            pill.className = 'gps-badge';
-            if (status === 'searching') {
-                pill.classList.add('gps-searching', 'pulse-soft');
-                text.textContent = accuracy ? `Signal: ±${Math.round(accuracy)}m` : 'Acquiring GPS...';
-            } else if (status === 'locked') {
-                pill.classList.add('gps-locked');
-                text.textContent = accuracy ? `Locked (±${Math.round(accuracy)}m)` : 'GPS Locked';
-            } else if (status === 'disabled') {
-                pill.classList.add('gps-disabled');
-                text.textContent = 'GPS Disabled';
+            // Render beautiful empty ledger
+            renderLedgerList([]);
+
+            // Trigger statistics load from DB
+            await syncDashboardStats();
+
+            // Refresh statistics loop (12 seconds)
+            setInterval(syncDashboardStats, 12000);
+
+            // Initialize online services since online is default
+            initializeDriverMap();
+            startGpsTracking();
+            startOpportunityPolling();
+        });
+
+        // Sync Driver Profile Text Elements
+        function updateDriverProfileUI() {
+            if (!driverData) return;
+            document.getElementById('driver-name').textContent = driverData.name;
+            document.getElementById('driver-car').textContent = `Vehicle: ${driverData.car_model || '---'} (${driverData.car_number || '---'})`;
+            
+            document.getElementById('profile-driver-name').textContent = driverData.name;
+            document.getElementById('profile-driver-phone').textContent = driverData.phone || '+91 99887 76655';
+            document.getElementById('profile-vehicle-type').textContent = (driverData.vehicle_type || 'SEDAN').toUpperCase();
+            
+            const bal = parseFloat(driverData.wallet_balance || 0).toFixed(2);
+            document.getElementById('wallet-balance-lbl').textContent = bal;
+        }
+
+        // Tab switching controller
+        function switchTab(tabId, el) {
+            document.querySelectorAll('.tab-view').forEach(view => view.classList.add('hidden'));
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            if (el) el.classList.add('active');
+
+            if (tabId === 'earnings') {
+                renderEarningsChart();
+            }
+            
+            // Fix map layout issues if switching back to rides tab
+            if (tabId === 'rides' && driverMap) {
+                setTimeout(() => {
+                    driverMap.invalidateSize();
+                }, 200);
             }
         }
 
-        function updateDriverMarkerOnMap(lat, lng) {
-            if (!driverMap) return;
-            if (driverMarker) {
-                driverMarker.setLatLng([lat, lng]);
-            } else {
-                const driverIcon = L.divIcon({
-                    className: 'driver-marker-wrap',
-                    html: `<div style="background:var(--primary-red); width:18px; height:18px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.3); position:relative;">
-                             <div style="position:absolute; top:-4px; left:-4px; right:-4px; bottom:-4px; border:2px solid var(--primary-red); border-radius:50%; animation:pulse 2s infinite;"></div>
-                           </div>`,
-                    iconSize: [24, 24]
+        // Toggle Duty status ONLINE / OFFLINE
+        function toggleDutyStatus() {
+            const btn = document.getElementById('duty-toggle-btn');
+            const txt = document.getElementById('duty-status-txt');
+            const scanner = document.getElementById('scanning-radar-bar');
+            
+            const offlineHero = document.getElementById('offline-hero-panel');
+            const mapPanel = document.getElementById('map-tracking-panel');
+            const oppsPanel = document.getElementById('opportunities-panel');
+
+            if (!isOnline) {
+                // GOING ONLINE
+                isOnline = true;
+                btn.className = 'duty-toggle online';
+                txt.textContent = 'Online';
+                scanner.classList.remove('hidden');
+                offlineHero.classList.add('hidden');
+                mapPanel.classList.remove('hidden');
+                
+                // Start map if not initialized
+                initializeDriverMap();
+
+                // Enable GPS Lock
+                startGpsTracking();
+
+                // Start searching polling for opportunities
+                startOpportunityPolling();
+
+                Swal.fire({
+                    title: 'System Online',
+                    text: 'You are now online. You will receive sounds and popups for booking matches.',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    ...swalDarkOpts
                 });
-                driverMarker = L.marker([lat, lng], { icon: driverIcon }).addTo(driverMap).bindPopup('<b>You are here</b>');
+            } else {
+                // GOING OFFLINE
+                isOnline = false;
+                btn.className = 'duty-toggle offline';
+                txt.textContent = 'Offline';
+                scanner.classList.add('hidden');
+                offlineHero.classList.remove('hidden');
+                mapPanel.classList.add('hidden');
+                oppsPanel.classList.add('hidden');
+
+                // Stop GPS
+                stopGpsTracking();
+
+                // Stop polling
+                stopOpportunityPolling();
+
+                // Close overlays
+                document.getElementById('incoming-ping-screen').classList.add('hidden');
+                stopAlertSound();
+
+                Swal.fire({
+                    title: 'System Offline',
+                    text: 'Duty session ended. You are no longer visible for ride allocations.',
+                    icon: 'info',
+                    timer: 1800,
+                    showConfirmButton: false,
+                    ...swalDarkOpts
+                });
             }
         }
 
+        // Initialize custom styled Dark Leaflet Map
+        function initializeDriverMap() {
+            if (driverMap) {
+                setTimeout(() => driverMap.invalidateSize(), 100);
+                return;
+            }
+            
+            // Map dark mode theme configuration (CartoDB Dark Matter)
+            driverMap = L.map('dashboard-map', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([13.0827, 80.2707], 12); // Default Chennai center
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 20
+            }).addTo(driverMap);
+
+            // Trigger size fix
+            setTimeout(() => {
+                driverMap.invalidateSize();
+            }, 100);
+        }
+
+        // GPS Geolocation Watcher logic
         function startGpsTracking() {
             if (!navigator.geolocation) {
                 updateGpsUI('disabled');
                 return;
             }
 
-            const startTime = Date.now();
             updateGpsUI('searching');
 
-            if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
-
             gpsWatchId = navigator.geolocation.watchPosition((pos) => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
                 const acc = pos.coords.accuracy;
-                const elapsed = Date.now() - startTime;
-                
-                if (!lastBestPos || acc < lastBestPos.coords.accuracy) {
-                    lastBestPos = pos;
-                }
 
-                // Tiered Logic
-                if (acc <= 30) {
-                    isGpsLocked = true;
-                    updateGpsUI('locked', acc);
-                } else {
-                    updateGpsUI('searching', acc);
-                }
+                updateGpsUI('locked', acc);
+                updateDriverLocationOnMap(lat, lng);
 
-                // Update map if visible
-                if (isGpsLocked || (acc <= 80 && elapsed >= 3000)) {
-                    updateDriverMarkerOnMap(pos.coords.latitude, pos.coords.longitude);
+                // Send live GPS tracking log to backend if trip is active
+                const now = Date.now();
+                if (acceptedOpportunityId && (now - lastGpsSendTime >= 9000)) {
+                    lastGpsSendTime = now;
+                    sendGpsTrackingUpdate(acceptedOpportunityId, lat, lng, acc);
                 }
             }, (err) => {
-                console.warn('GPS Status:', err.message);
-                if (err.code === 3) {
-                    // Timeout is common, just keep searching
-                    updateGpsUI('searching');
-                    return;
-                }
-                if (err.code === 2 || err.code === 1) {
-                    updateGpsUI('disabled');
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'GPS Signal Required',
-                        text: 'Please enable high-accuracy location services to navigate missions.',
-                        confirmButtonColor: '#b71c1c'
-                    });
-                }
-            }, { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 });
-        }
-        let opportunityMap = null;
-        let opportunityMarkers = [];
-        let currentTacticalJobId = null;
-        let lastSeenJobs = new Set();
-        let lastSeenMyJobs = new Map(); // id -> status
-        let initialLoadDone = false;
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            const user = JSON.parse(localStorage.getItem('cityride_pilot'));
-            if (!user) {
-                window.location.href = '/driver-login';
-                return;
-            }
-
-            document.getElementById('driver-name').textContent = user.name;
-            document.getElementById('car-info').textContent = `Vehicle: ${user.car_model} (${user.car_number})`;
-
-
-            await loadAllJobs(user.id);
-            updateDriverInfo(user.id);
-            initialLoadDone = true;
-
-            // Live Status Radar Array Poll (5 seconds)
-            setInterval(() => {
-                loadAllJobs(user.id);
-                updateDriverInfo(user.id);
-            }, 5000);
-        });
-
-        function showToast(title, message, type = 'info') {
-            // Notification feature removed as per user request
-            console.log(`TOAST (${type}): ${title} - ${message}`);
-        }
-
-        async function updateDriverInfo(driverId) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/driver/info/${driverId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if(data.success) {
-                        const bal = parseFloat(data.driver.wallet_balance || 0).toFixed(2);
-                        document.getElementById('wallet-balance').textContent = bal;
-                        document.getElementById('driver-name').textContent = data.driver.name;
-                        document.getElementById('car-info').textContent = `Vehicle: ${data.driver.car_model || '---'} (${data.driver.car_number || '---'})`;
-                        
-                        // update local storage safely
-                        const user = JSON.parse(localStorage.getItem('cityride_pilot'));
-                        user.wallet_balance = data.driver.wallet_balance;
-                        localStorage.setItem('cityride_pilot', JSON.stringify(user));
-                        
-                        // Initialize GPS on first successful profile load
-                        if (!gpsWatchId) startGpsTracking();
-                    }
-                }
-            } catch (err) { console.error('Failed to update wallet info'); }
-        }
-
-        async function loadAllJobs(driverId) {
-            const hasActive = await loadMyJobs(driverId);
-            loadAvailableJobs(driverId, hasActive);
-        }
-
-        async function loadAvailableJobs(driverId, hasActive = false) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/driver/jobs/${driverId}`);
-                if (!res.ok) return; // Handle 429 or other errors silently
-                const jobs = await res.json();
-                if (!Array.isArray(jobs)) return;
-
-                // Delta Tracking for New Jobs
-                if (initialLoadDone) {
-                    jobs.forEach(job => {
-                        if (!lastSeenJobs.has(job.id)) {
-                            showToast('New Mission Available', `Ride from ${job.pickup_loc.split(',')[0]} is ready for dispatch!`, 'info');
-                        }
-                    });
-                }
-                lastSeenJobs = new Set(jobs.map(j => j.id));
-
-                const container = document.getElementById('available-jobs');
-                container.innerHTML = jobs.length ? '' : '<p class="empty-state">No pending rides available in your area.</p>';
-
-                // OPPORTUNITY MAP LOGIC
-                if (!opportunityMap && jobs.length > 0) {
-                    opportunityMap = L.map('opportunity-map').setView([13.08, 80.27], 11);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(opportunityMap);
-                }
-
-                // Global state for map rendering
-                window.allAvailableJobs = jobs;
-                window.lastDriverId = driverId;
-                window.lastHasActive = hasActive;
-
-                // Refresh map if currently visible (maintaining focus if specific job selected)
-                if (document.getElementById('opp-map-modal').style.display === 'flex') {
-                    renderOpportunityMap(currentTacticalJobId);
-                }
-
-                // Render Job Cards
-                jobs.forEach(job => {
-                    const card = document.createElement('div');
-                    card.className = 'job-card';
-                    card.innerHTML = `
-                        <div style="display:flex; gap:0.5rem; flex-direction:column; margin-bottom:1rem;">
-                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                                <div class="badge" style="background:#e3f2fd; color:#1565c0">${job.vehicle_type}</div>
-                                <div class="badge" style="background:#f3e5f5; color:#7b1fa2">${(job.trip_type === 'round' ? 'Round Trip' : (job.trip_type === 'rental' ? 'Local Rental' : (job.trip_type || 'One Way').replace('_', ' ')))}</div>
-                                ${job.vendor_id ? `<div class="badge" style="background:#e8eaf6; color:#3f51b5; border:1px solid #3f51b5">VENDOR BOOKING</div>` : ''}
-                            </div>
-                        </div>
-                        <div style="font-weight:700;">
-                            <span>${job.pickup_loc}</span>
-                        </div>
-                        <div style="font-size:0.85rem; color:#666; margin-top:4px;">
-                            <span>→ ${job.drop_loc}</span>
-                        </div>
-                        <div style="font-size:0.85rem; color:var(--primary-red); font-weight:700; margin-top:8px;">
-                            👤 ${job.customer_name || 'Passenger'}
-                        </div>
-                        <div style="font-weight:700; font-size:1.1rem; margin-top:1rem; color:var(--primary-red); display:flex; justify-content:space-between; align-items:center;">
-                            <span>${job.fare}</span>
-                            <button class="btn" onclick="openOpportunityModal(${job.id})" style="background:rgba(183,28,28,0.1); border:none; padding:8px; border-radius:10px; color:var(--primary-red); display:flex; align-items:center; justify-content:center;">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
-                            </button>
-                        </div>
-                        <div style="font-size:0.8rem; color:#666; margin-bottom:1rem;">Distance: ${job.distance}</div>
-                        <button class="btn btn-primary" style="width:100%" onclick="acceptRide(${job.id}, ${driverId}, ${hasActive})">Accept Mission</button>
-                    `;
-                    container.appendChild(card);
-                });
-            } catch (err) { console.error(err); }
-        }
-
-        function renderOpportunityMap(singleJobId = null) {
-            if (!opportunityMap || !window.allAvailableJobs) return;
-
-            // Clear existing markers
-            opportunityMarkers.forEach(m => m.remove());
-            opportunityMarkers = [];
-
-            const bounds = [];
-            // Filter if we only want to see 1 mission
-            const jobsToRender = singleJobId ? window.allAvailableJobs.filter(j => j.id === singleJobId) : window.allAvailableJobs;
-
-            jobsToRender.forEach(job => {
-                if (job.pickup_coords && job.drop_coords) {
-                    const [pLng, pLat] = job.pickup_coords.split(',').map(Number);
-                    const [dLng, dLat] = job.drop_coords.split(',').map(Number);
-
-                    // Pickup Marker
-                    const pMarker = L.marker([pLat, pLng], {
-                        icon: L.divIcon({
-                            className: 'pin-wrapper',
-                            html: `<div class="pin-pointer"><span>#B${job.id}</span></div>`,
-                            iconSize: [32, 42],
-                            iconAnchor: [16, 42]
-                        })
-                    })
-                    .addTo(opportunityMap)
-                    .bindPopup(`<b>📍 Trip #B${job.id} Pickup</b><br>${job.pickup_loc}<br><br><button class="btn btn-primary" style="font-size:0.7rem; padding:5px 10px;" onclick="acceptRide(${job.id}, ${window.lastDriverId}, ${window.lastHasActive})">Accept Mission</button>`);
-
-                    // Destination Node
-                    const dMarker = L.marker([dLat, dLng], {
-                        icon: L.divIcon({
-                            className: 'pin-wrapper',
-                            html: `<div class="pin-pointer-dest"></div>`,
-                            iconSize: [24, 34],
-                            iconAnchor: [12, 34]
-                        })
-                    })
-                    .addTo(opportunityMap)
-                    .bindPopup(`<b>🏁 Trip #B${job.id} Destination</b><br>${job.drop_loc}`);
-
-                    // Trajectory Path
-                    const line = L.polyline([[pLat, pLng], [dLat, dLng]], {
-                        color: '#e64a19',
-                        weight: 3,
-                        opacity: 0.6,
-                        dashArray: '5, 10'
-                    }).addTo(opportunityMap);
-
-                    opportunityMarkers.push(pMarker, dMarker, line);
-                    bounds.push([pLat, pLng], [dLat, dLng]);
-                }
+                console.warn('GPS Fail:', err.message);
+                updateGpsUI('searching');
+            }, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
             });
+        }
 
-            if (bounds.length > 0) {
-                opportunityMap.fitBounds(bounds, { padding: [80, 80] });
+        // Stop GPS Watcher
+        function stopGpsTracking() {
+            if (gpsWatchId) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+                gpsWatchId = null;
             }
         }
-        async function loadMyJobs(driverId) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/driver/my-jobs/${driverId}?t=${Date.now()}`); 
-                if (!res.ok) return false; 
-                const jobs = await res.json();
-                if (!Array.isArray(jobs)) return false;
 
-                // Delta Tracking for Status Changes & New Captures
-                if (initialLoadDone) {
-                    jobs.forEach(job => {
-                        if (!lastSeenMyJobs.has(job.id)) {
-                            showToast('Mission Locked', `You have successfully captured Trip #B${job.id}.`, 'success');
-                        } else if (lastSeenMyJobs.get(job.id) !== job.status) {
-                            showToast('Status Update', `Trip #B${job.id} is now ${job.status.toUpperCase()}.`, 'info');
-                        }
-                    });
-                }
-                lastSeenMyJobs = new Map(jobs.map(j => [j.id, j.status]));
+        // GPS status indicators text update
+        function updateGpsUI(status, accuracy = null) {
+            const dot = document.getElementById('gps-status-dot');
+            const lbl = document.getElementById('gps-status-text');
+            if (!dot || !lbl) return;
 
-                const container = document.getElementById('my-jobs');
-                container.innerHTML = jobs.length ? '' : '<p class="empty-state">You have no active assignments.</p>';
-                
-                // Find Active Mission (assigned, ongoing, or awaiting cancellation)
-                const activeMission = jobs.find(j => ['assigned', 'ongoing', 'finished', 'cancel_requested'].includes(j.status));
-                const activeContainer = document.getElementById('active-mission-container');
-                
-                if (activeMission) {
-                    activeContainer.classList.remove('hidden');
-                    const details = document.getElementById('active-details');
-                    const statusTag = document.getElementById('active-status');
-
-                    statusTag.className = `badge`;
-                    const isPendingCancel = activeMission.status === 'cancel_requested';
-                    statusTag.style.background = isPendingCancel ? '#fce4ec' : '#CCE5FF';
-                    statusTag.style.color = isPendingCancel ? '#c2185b' : '#004085';
-                    statusTag.textContent = isPendingCancel ? 'ABORT PENDING' : activeMission.status.toUpperCase();
-
-                    details.innerHTML = `
-                        <div class="mission-grid">
-                            <div>
-                                <div style="padding:1.5rem; background:white; border-radius:15px; border:1px solid #eee;">
-                                    <div style="font-weight:600; color:var(--primary-red); margin-bottom:0.5rem;">Ride Details</div>
-                                    <div style="font-size:0.95rem; font-weight:700;">Estimated Fee: <span style="color:var(--primary-red)">${activeMission.fare}</span></div>
-                                    <div style="font-size:0.85rem; color: #7b1fa2; font-weight: 700; text-transform: uppercase; margin-top:0.5rem;">Type: ${(activeMission.trip_type === 'round' ? 'Round Trip' : (activeMission.trip_type === 'rental' ? 'Local Rental' : (activeMission.trip_type || 'One Way').replace('_', ' ')))}</div>
-                                    <div style="font-size:0.85rem; margin-top:0.4rem; font-weight:700; color:var(--text-muted)">Booking ID: #B${activeMission.id}</div>
-                                </div>
-                                ${activeMission.trip_type === 'rental' && activeMission.start_odometer ? `
-                                    <div style="margin-top:1rem; padding:1.2rem; background:#fff3e0; border-radius:15px; border:1px solid #ffe0b2;">
-                                        <div style="font-weight:700; color:#e65100; margin-bottom:0.5rem; font-size:0.7rem; text-transform:uppercase;">Rental Odometer Audit</div>
-                                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:700;">
-                                            <span>Start: ${activeMission.start_odometer}</span>
-                                            ${activeMission.end_odometer ? `<span>End: ${activeMission.end_odometer}</span>` : ''}
-                                        </div>
-                                        ${activeMission.journey_start_time && activeMission.journey_end_time ? `
-                                            <div style="font-size:0.8rem; margin-top:8px; border-top:1px solid #ffe0b2; padding-top:8px; font-weight:800; color:#333;">
-                                                Total Time: ${((new Date(activeMission.journey_end_time) - new Date(activeMission.journey_start_time)) / (1000 * 60 * 60)).toFixed(2)} Hours
-                                            </div>
-                                        ` : activeMission.journey_start_time ? `
-                                            <div style="font-size:0.75rem; margin-top:8px; color:#888;">Trip in progress...</div>
-                                        ` : ''}
-                                    </div>
-                                ` : ''}
-
-                                <div style="margin-top:1.5rem; padding: 0 1rem;">
-                                    <div style="margin-bottom:1.5rem;">
-                                        <div style="font-size:0.7rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Pickup:</div>
-                                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
-                                            <div style="font-weight:700; font-size:1.1rem;">${activeMission.pickup_loc}</div>
-                                            <a href="https://www.google.com/maps/search/?api=1&query=${activeMission.pickup_coords ? activeMission.pickup_coords.split(',').reverse().join(',') : encodeURIComponent(activeMission.pickup_loc)}" target="_blank" class="nav-link-btn btn-primary" style="background: #1a73e8; white-space: nowrap;">
-                                                <i class="ph ph-navigation-arrow" style="font-size: 1.1rem;"></i> NAV
-                                            </a>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div style="font-size:0.7rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Dropoff:</div>
-                                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
-                                            <div style="font-weight:700; font-size:1.1rem;">${activeMission.drop_loc}</div>
-                                            <a href="https://www.google.com/maps/search/?api=1&query=${activeMission.drop_coords ? activeMission.drop_coords.split(',').reverse().join(',') : encodeURIComponent(activeMission.drop_loc)}" target="_blank" class="nav-link-btn btn-primary" style="background: #34a853; white-space: nowrap;">
-                                                <i class="ph ph-navigation-arrow" style="font-size: 1.1rem;"></i> NAV
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div style="background:#f9f9f9; padding:2rem; border-radius:20px; text-align:center; display:flex; flex-direction:column; justify-content:center; border: 1px solid var(--accents);">
-                                <div style="font-size:0.7rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:1rem;">Passenger</div>
-                                <div style="font-weight:700; font-size:1.2rem; color:var(--primary-red); margin-bottom:0.5rem;">${activeMission.customer_name}</div>
-                                <div style="margin-top:1rem;"><a href="tel:${activeMission.customer_phone}" class="btn btn-primary" style="padding:0.7rem 1.5rem;">Call Passenger</a></div>
-                                <div style="display:flex; flex-direction:column; gap:10px; margin-top:1.5rem;">
-                                    ${activeMission.status === 'assigned' ? `
-                                        ${activeMission.trip_type === 'rental' ? `
-                                            <button class="btn btn-primary" style="background:#007bff; border-color:#007bff" onclick="startJourney(${activeMission.id}, ${driverId})">Start Journey</button>
-                                        ` : `
-                                            <button class="btn btn-primary" style="background:#28a745; border-color:#28a745" onclick="completeRide(${activeMission.id}, ${driverId}, this)">Complete Journey</button>
-                                        `}
-                                        <button class="btn" style="background:#dc3545; color:white; border:none; padding:0.7rem; font-weight:700; border-radius:12px; cursor:pointer;" onclick="requestCancel(${activeMission.id}, ${driverId})">Abort Mission</button>
-                                    ` : activeMission.status === 'ongoing' ? `
-                                        <button class="btn btn-primary" style="background:#f39c12; border-color:#f39c12" onclick="finishTrip(${activeMission.id}, ${driverId})">Finish Trip (Enter Odo)</button>
-                                    ` : activeMission.status === 'finished' ? `
-                                        <button class="btn btn-primary" style="background:#28a745; border-color:#28a745" onclick="completeRide(${activeMission.id}, ${driverId}, this)">Verify & Complete (OTP)</button>
-                                    ` : `
-                                        <div style="background:#fff3e0; color:#e65100; padding:1rem; border-radius:12px; font-weight:600; font-size:0.85rem; border:1px solid #ffe0b2;">
-                                            🛑 Abort Request is under review by Ground Control.
-                                        </div>
-                                    `}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-
-                    // MAP INITIALIZATION (Enhanced with cleanup and invalidateSize)
-                    if (!isMapInitialized) {
-                        isMapInitialized = true;
-                        setTimeout(async () => {
-                            try {
-                                if (driverMap) {
-                                    driverMap.remove();
-                                }
-                                driverMap = L.map('mission-map').setView([13.08, 80.27], 13);
-                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(driverMap);
-
-                                const getCoords = async (addr, storedCoords) => {
-                                    if (storedCoords) return storedCoords.split(',').map(Number);
-                                    if (!addr || addr.trim() === '') return null;
-                                    try {
-                                        const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(addr)}&limit=1`);
-                                        if (!r.ok) return null;
-                                        const d = await r.json();
-                                        return d.features[0]?.geometry.coordinates;
-                                    } catch (e) { return null; }
-                                };
-
-                                const pCoords = await getCoords(activeMission.pickup_loc, activeMission.pickup_coords);
-                                const dCoords = await getCoords(activeMission.drop_loc, activeMission.drop_coords);
-
-                                if (pCoords && dCoords) {
-                                    const pMarker = L.marker([pCoords[1], pCoords[0]]).addTo(driverMap).bindPopup(`<b>📍 Pickup:</b><br>${activeMission.pickup_loc}`);
-                                    const dMarker = L.marker([dCoords[1], dCoords[0]]).addTo(driverMap).bindPopup(`<b>🏁 Destination:</b><br>${activeMission.drop_loc}`);
-
-                                    // Draw Route
-                                    try {
-                                        const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${pCoords[0]},${pCoords[1]};${dCoords[0]},${dCoords[1]}?overview=full&geometries=geojson`);
-                                        const routeData = await routeRes.json();
-                                        L.geoJSON(routeData.routes[0].geometry, { style: { color: "#B71C1C", weight: 5, opacity: 0.7 } }).addTo(driverMap);
-                                    } catch (e) { }
-
-                                    const group = new L.featureGroup([pMarker, dMarker]);
-                                    driverMap.fitBounds(group.getBounds().pad(0.2));
-                                }
-                                
-                                // Fix gray tiles issue
-                                driverMap.invalidateSize();
-                            } catch (e) {
-                                console.log('Map init skipped or failed:', e.message);
-                                isMapInitialized = false; // Allow retry on next poll if failed
-                            }
-                        }, 500);
-                    }
-                } else {
-                    activeContainer.classList.add('hidden');
-                    isMapInitialized = false; // Reset if no active mission
-                }
-
-                jobs.forEach(job => {
-                    const isCompleted = job.status === 'completed';
-                    const card = document.createElement('div');
-                    card.className = 'job-card';
-                    card.innerHTML = `
-                        <div style="display:flex; gap:0.5rem; flex-direction:column; margin-bottom:1rem;">
-                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                                <div class="badge" style="background:${isCompleted ? '#e8f5e9' : '#fff3e0'}; color:${isCompleted ? '#2e7d32' : '#e65100'}">${job.status}</div>
-                                <div class="badge" style="background:#f3e5f5; color:#7b1fa2">${(job.trip_type === 'round' ? 'Round Trip' : (job.trip_type === 'rental' ? 'Local Rental' : (job.trip_type || 'One Way').replace('_', ' ')))}</div>
-                                ${job.vendor_id ? `<div class="badge" style="background:#e8eaf6; color:#3f51b5; border:1px solid #3f51b5">VENDOR BOOKING</div>` : ''}
-                            </div>
-                        </div>
-                        <div style="font-weight:700">Trip #B${job.id}</div>
-                        <div style="font-size:0.85rem;">
-                            <span>${job.pickup_loc}</span>
-                        </div>
-                        <div style="font-size:0.85rem; margin-top:4px;">
-                            <span>→ ${job.drop_loc}</span>
-                        </div>
-                        
-                        <div class="customer-info">
-                            <div style="font-weight:700">Passenger Details:</div>
-                            <div>👤 ${job.customer_name || 'Passenger'}</div>
-                            <div>📞 <a href="tel:${job.customer_phone || ''}" style="color:var(--primary-red)">${job.customer_phone || 'N/A'}</a></div>
-                        </div>
-
-                        ${(!isCompleted && (!activeMission || activeMission.id !== job.id)) ? `
-                            <button class="btn btn-primary" style="margin-top:1rem; background:#28a745; border-color:#28a745" onclick="completeRide(${job.id}, ${driverId}, this)">Mark Completed</button>
-                        ` : ''}
-                    `;
-                    container.appendChild(card);
-                });
-            } catch (err) { console.error(err); }
+            dot.className = 'gps-status-indicator';
+            if (status === 'searching') {
+                dot.classList.add('searching');
+                lbl.textContent = accuracy ? `Accuracy: ±${Math.round(accuracy)}m` : 'Acquiring GPS...';
+            } else if (status === 'locked') {
+                dot.classList.add('locked');
+                lbl.textContent = `GPS Locked (±${Math.round(accuracy)}m)`;
+            } else if (status === 'disabled') {
+                dot.classList.add('disabled');
+                lbl.textContent = 'GPS Offline';
+            }
         }
 
-        async function acceptRide(rideId, driverId, hasActive) {
-            if (hasActive) {
-                alert('Warning: You have a mission still pending/active. You must complete your current assignment before capturing new missions.');
+        // Update driver icon marker coordinates on map
+        function updateDriverLocationOnMap(lat, lng) {
+            if (!driverMap) return;
+            
+            const group = [];
+            
+            if (driverMarker) {
+                driverMarker.setLatLng([lat, lng]);
+            } else {
+                const pulseIcon = L.divIcon({
+                    className: 'map-icon-div',
+                    html: `<div class="map-marker-pulse driver"></div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+                driverMarker = L.marker([lat, lng], { icon: pulseIcon }).addTo(driverMap);
+            }
+            
+            group.push(driverMarker);
+
+            // Center map on driver location
+            if (!activeRouteLine) {
+                driverMap.setView([lat, lng], 15);
+            }
+        }
+
+        // Search Polling loop
+        function startOpportunityPolling() {
+            if (pollingInterval) clearInterval(pollingInterval);
+            pollOpportunityJobs();
+            pollingInterval = setInterval(pollOpportunityJobs, 4000);
+        }
+
+        function stopOpportunityPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+        }
+
+        // Fetch jobs from server
+        async function pollOpportunityJobs() {
+            if (!isOnline) return;
+
+            try {
+                // 1. Check current assigned/ongoing jobs
+                const resJobs = await fetch(`${API_BASE_URL}/api/driver/my-jobs/${driverData.id}?t=${Date.now()}`);
+                if (resJobs.ok) {
+                    const activeJobs = await resJobs.json();
+                    const ongoing = activeJobs.find(j => ['assigned', 'ongoing', 'finished', 'cancel_requested'].includes(j.status));
+                    
+                    if (ongoing) {
+                        document.getElementById('opportunities-panel').classList.add('hidden');
+                        document.getElementById('active-mission-panel').classList.remove('hidden');
+                        acceptedOpportunityId = ongoing.id;
+                        activeRideObj = ongoing;
+                        renderActiveRideWidget(ongoing);
+                        return;
+                    } else {
+                        document.getElementById('active-mission-panel').classList.add('hidden');
+                        acceptedOpportunityId = null;
+                        activeRideObj = null;
+                        clearActiveRouteMap();
+                    }
+                }
+
+                // 2. Fetch pending jobs
+                const resOpps = await fetch(`${API_BASE_URL}/api/driver/jobs/${driverData.id}`);
+                if (!resOpps.ok) return;
+                const jobs = await resOpps.json();
+                
+                if (Array.isArray(jobs)) {
+                    allOpportunities = jobs;
+                    renderOpportunityListView(jobs);
+
+                    // Open ping screen if a pending job matches
+                    const urgent = jobs.find(j => j.status === 'pending');
+                    if (urgent) {
+                        triggerOlaPingAlert(urgent);
+                    } else {
+                        document.getElementById('incoming-ping-screen').classList.add('hidden');
+                        stopAlertSound();
+                    }
+                }
+            } catch (err) {
+                console.error('Opportunity polling error:', err);
+            }
+        }
+
+        // Render standard opportunities list
+        function renderOpportunityListView(jobs) {
+            const panel = document.getElementById('opportunities-panel');
+            const list = document.getElementById('opportunity-card-list');
+            if (jobs.length === 0) {
+                panel.classList.add('hidden');
                 return;
             }
-            if (!confirm('Capturing this mission? Ensure you are ready for immediate dispatch.')) return;
+
+            panel.classList.remove('hidden');
+            list.innerHTML = jobs.map(job => `
+                <div class="opp-card">
+                    <div class="opp-card-row">
+                        <div class="opp-badge-row">
+                            <span class="opp-badge vehicle">${job.vehicle_type}</span>
+                            <span class="opp-badge type">${job.trip_type}</span>
+                            ${job.vendor_id ? '<span class="opp-badge vendor">Vendor</span>' : ''}
+                        </div>
+                        <span class="opp-fare">${job.fare}</span>
+                    </div>
+                    <div class="opp-loc-line">
+                        <div style="font-weight:700;"><span style="color:var(--accent-brand)">📍</span> ${job.pickup_loc}</div>
+                        <div style="color:var(--text-gray); margin-top:2px;">🏁 ${job.drop_loc}</div>
+                    </div>
+                    <div class="opp-card-row" style="margin-top:6px; border-top:1px solid rgba(255,255,255,0.04); padding-top:10px;">
+                        <span class="opp-dist">Distance: ${job.distance}</span>
+                        <button class="payout-btn" style="padding:6px 12px; font-size:0.75rem;" onclick="acceptBookingPing(${job.id})">Accept Ride</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Audio chimes Alert system
+        function playSynthesizedPing() {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.45);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            } catch (err) {
+                console.warn('Audio contextual initialization error:', err.message);
+            }
+        }
+
+        function startAlertSound() {
+            if (soundInterval) return;
+            playSynthesizedPing();
+            soundInterval = setInterval(playSynthesizedPing, 1000);
+        }
+
+        function stopAlertSound() {
+            if (soundInterval) {
+                clearInterval(soundInterval);
+                soundInterval = null;
+            }
+        }
+
+        // Trigger Ola screen modal overlay
+        let pingCountdownVal = 15;
+        let pingTimerInterval = null;
+        let activePingId = null;
+
+        function triggerOlaPingAlert(job) {
+            if (activePingId === job.id && !document.getElementById('incoming-ping-screen').classList.contains('hidden')) {
+                return;
+            }
+
+            activePingId = job.id;
+            
+            document.getElementById('ping-vehicle-type').textContent = (job.vehicle_type || 'SEDAN').toUpperCase();
+            document.getElementById('ping-fare-val').textContent = job.fare;
+            document.getElementById('ping-dist-val').textContent = job.distance;
+            document.getElementById('ping-pickup-loc').textContent = job.pickup_loc;
+            document.getElementById('ping-drop-loc').textContent = job.drop_loc;
+            document.getElementById('ping-passenger-name').textContent = job.customer_name || 'Passenger';
+            
+            document.getElementById('ping-accept-btn').onclick = () => acceptBookingPing(job.id);
+            document.getElementById('incoming-ping-screen').classList.remove('hidden');
+            
+            startAlertSound();
+
+            pingCountdownVal = 15;
+            const progressCircle = document.getElementById('ping-timer-progress');
+            const timerLabel = document.getElementById('ping-timer-lbl');
+            const circumference = 376.99;
+            
+            progressCircle.style.strokeDasharray = circumference;
+            progressCircle.style.strokeDashoffset = 0;
+            timerLabel.textContent = pingCountdownVal;
+
+            if (pingTimerInterval) clearInterval(pingTimerInterval);
+            
+            pingTimerInterval = setInterval(() => {
+                pingCountdownVal--;
+                timerLabel.textContent = pingCountdownVal;
+
+                const offset = circumference - (pingCountdownVal / 15) * circumference;
+                progressCircle.style.strokeDashoffset = offset;
+
+                if (pingCountdownVal <= 0) {
+                    declinePing();
+                }
+            }, 1000);
+        }
+
+        function declinePing() {
+            document.getElementById('incoming-ping-screen').classList.add('hidden');
+            stopAlertSound();
+            if (pingTimerInterval) {
+                clearInterval(pingTimerInterval);
+                pingTimerInterval = null;
+            }
+            activePingId = null;
+        }
+
+        // Call Accept API
+        async function acceptBookingPing(rideId) {
+            declinePing();
+            
+            const bookingObj = allOpportunities.find(j => j.id === rideId);
+            const bookingFareVal = bookingObj ? parseFloat(bookingObj.fare.replace(/[^0-9.]/g, '')) || 0 : 0;
+            const requiredBalance = bookingFareVal * 0.10;
+            
+            if (parseFloat(driverData.wallet_balance) < requiredBalance) {
+                Swal.fire({
+                    title: 'Wallet Balance Low',
+                    html: `Accepting this ride requires at least 10% commission balance (₹${requiredBalance.toFixed(2)}). Please add money to your wallet.`,
+                    icon: 'error',
+                    ...swalDarkOpts
+                });
+                return;
+            }
 
             try {
                 const res = await fetch(`${API_BASE_URL}/api/bookings/accept`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ bookingId: rideId, driverId })
+                    body: JSON.stringify({ bookingId: rideId, driverId: driverData.id })
                 });
 
                 if (res.ok) {
-                    showToast('Mission Locked', `You have successfully captured Trip #B${rideId}.`, 'success');
-                    loadAllJobs(driverId);
+                    Swal.fire({
+                        title: 'Mission Captured!',
+                        text: 'Navigate to pickup location immediately.',
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false,
+                        ...swalDarkOpts
+                    });
+                    pollOpportunityJobs();
                 } else {
-                    const data = await res.json();
-                    alert(`Capture failed: ${data.error}`);
+                    const err = await res.json();
+                    Swal.fire('Accept Failed', err.error || 'Failed', 'error');
                 }
-            } catch (err) { alert('Network error during mission capture.'); }
+            } catch (err) {
+                Swal.fire('Error', 'Failed to submit acceptance.', 'error');
+            }
         }
 
-        async function startJourney(rideId, driverId) {
-            const odo = prompt('JOURNEY INITIALIZATION\nPlease enter the Opening Odometer reading:');
-            if (!odo || isNaN(odo)) {
-                alert('Invalid Odometer reading.');
-                return;
+        // Map clearing and routing paths
+        function clearActiveRouteMap() {
+            if (activeRouteLine) { activeRouteLine.remove(); activeRouteLine = null; }
+            if (activePickupMarker) { activePickupMarker.remove(); activePickupMarker = null; }
+            if (activeDropMarker) { activeDropMarker.remove(); activeDropMarker = null; }
+        }
+
+        async function drawTripRouteOnMap(pickupLoc, dropLoc, pCoordsStr, dCoordsStr) {
+            if (!driverMap) return;
+            clearActiveRouteMap();
+
+            try {
+                const getCoords = async (addr, storedCoords) => {
+                    if (storedCoords) return storedCoords.split(',').map(Number);
+                    if (!addr) return null;
+                    try {
+                        const r = await fetch(`${API_BASE_URL}/api/proxy/geocode?q=${encodeURIComponent(addr)}&limit=1`);
+                        if (!r.ok) return null;
+                        const d = await r.json();
+                        return d.features[0]?.geometry.coordinates;
+                    } catch (e) { return null; }
+                };
+
+                const pCoords = await getCoords(pickupLoc, pCoordsStr);
+                const dCoords = await getCoords(dropLoc, dCoordsStr);
+
+                if (pCoords && dCoords) {
+                    const pinPickup = L.divIcon({
+                        className: 'map-pin-div',
+                        html: `<div style="background:var(--accent-brand); width:14px; height:14px; border-radius:50%; border:2.5px solid #000; box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>`,
+                        iconSize: [14, 14]
+                    });
+                    const pinDrop = L.divIcon({
+                        className: 'map-pin-div',
+                        html: `<div style="background:var(--danger-red); width:14px; height:14px; border-radius:50%; border:2.5px solid #000; box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>`,
+                        iconSize: [14, 14]
+                    });
+
+                    activePickupMarker = L.marker([pCoords[1], pCoords[0]], { icon: pinPickup }).addTo(driverMap).bindPopup('<b>Pickup Point</b>');
+                    activeDropMarker = L.marker([dCoords[1], dCoords[0]], { icon: pinDrop }).addTo(driverMap).bindPopup('<b>Destination Drop</b>');
+
+                    const routeRes = await fetch(`${API_BASE_URL}/api/proxy/route?pickup=${pCoords[0]},${pCoords[1]}&drop=${dCoords[0]},${dCoords[1]}`);
+                    if (routeRes.ok) {
+                        const routeData = await routeRes.json();
+                        if (routeData.routes && routeData.routes[0]) {
+                            activeRouteLine = L.polyline([[pCoords[1], pCoords[0]], [dCoords[1], dCoords[0]]], {
+                                color: '#B71C1C',
+                                weight: 5,
+                                opacity: 0.8
+                            }).addTo(driverMap);
+                        }
+                    }
+
+                    const boundsGroup = new L.featureGroup([activePickupMarker, activeDropMarker]);
+                    driverMap.fitBounds(boundsGroup.getBounds().pad(0.25));
+                }
+            } catch (err) {
+                console.warn('Map routing draw failed:', err.message);
             }
+        }
+
+        // Render active ride widget
+        function renderActiveRideWidget(ride) {
+            document.getElementById('active-ride-id').textContent = `ID: #B${ride.id}`;
+            document.getElementById('active-passenger-name').textContent = ride.customer_name || 'Passenger';
+            document.getElementById('active-fare-val').textContent = ride.fare;
+            document.getElementById('active-dist-val').textContent = ride.distance || '0 KM';
+            document.getElementById('active-actual-dist').textContent = ride.actual_distance || '0.0 KM';
+            document.getElementById('active-pickup-loc').textContent = ride.pickup_loc;
+            document.getElementById('active-drop-loc').textContent = ride.drop_loc;
+
+            const pLngLat = ride.pickup_coords ? ride.pickup_coords.split(',').reverse().join(',') : encodeURIComponent(ride.pickup_loc);
+            const dLngLat = ride.drop_coords ? ride.drop_coords.split(',').reverse().join(',') : encodeURIComponent(ride.drop_loc);
+            
+            document.getElementById('nav-pickup-btn').href = `https://www.google.com/maps/search/?api=1&query=${pLngLat}`;
+            document.getElementById('nav-drop-btn').href = `https://www.google.com/maps/search/?api=1&query=${dLngLat}`;
+            document.getElementById('call-passenger-btn').href = `tel:${ride.customer_phone || ''}`;
+
+            const badge = document.getElementById('active-ride-badge');
+            const btnsArea = document.getElementById('active-op-btns');
+
+            drawTripRouteOnMap(ride.pickup_loc, ride.drop_loc, ride.pickup_coords, ride.drop_coords);
+
+            if (ride.status === 'assigned') {
+                badge.textContent = 'En Route to Pickup';
+                badge.style.background = 'rgba(183, 28, 28, 0.1)';
+                badge.style.color = 'var(--accent-brand)';
+                
+                btnsArea.innerHTML = `
+                    <button class="btn btn-primary" onclick="initiateStartJourney(${ride.id}, '${ride.trip_type}')">Start Journey</button>
+                    <button class="btn btn-secondary" style="color:var(--danger-red); border-color:rgba(255,59,48,0.2);" onclick="abortAssignedMission(${ride.id})">Cancel Assignment</button>
+                `;
+            } else if (ride.status === 'ongoing') {
+                badge.textContent = 'Trip in Progress';
+                badge.style.background = 'rgba(52, 199, 89, 0.1)';
+                badge.style.color = 'var(--success-green)';
+                
+                btnsArea.innerHTML = `
+                    <button class="btn btn-primary" style="background:var(--warning-amber); box-shadow:none;" onclick="concludeOngoingTrip(${ride.id}, '${ride.trip_type}')">Finish Journey</button>
+                `;
+            } else if (ride.status === 'finished') {
+                badge.textContent = 'Awaiting OTP Verification';
+                badge.style.background = 'rgba(255, 159, 10, 0.1)';
+                badge.style.color = 'var(--warning-amber)';
+                
+                btnsArea.innerHTML = `
+                    <button class="btn btn-primary" onclick="verifyCompletionOtp(${ride.id})">Enter Passenger OTP</button>
+                `;
+            } else if (ride.status === 'cancel_requested') {
+                badge.textContent = 'Abort Pending';
+                badge.style.background = 'rgba(255, 59, 48, 0.1)';
+                badge.style.color = 'var(--danger-red)';
+                
+                btnsArea.innerHTML = `
+                    <div style="background:rgba(255,59,48,0.05); border:1px solid rgba(255,59,48,0.15); padding:12px; border-radius:12px; font-size:0.75rem; text-align:center; color:var(--text-gray);">
+                        Abort request has been logged. Standing by for Admin Dispatch approval.
+                    </div>
+                `;
+            }
+        }
+
+        // Start Journey operation
+        async function initiateStartJourney(rideId, tripType) {
+            let openingOdo = null;
+            if (tripType === 'rental') {
+                const { value: odo } = await Swal.fire({
+                    title: 'Odometer Check',
+                    text: 'Please submit the starting odometer value:',
+                    input: 'number',
+                    inputAttributes: { min: '1' },
+                    showCancelButton: true,
+                    ...swalDarkOpts
+                });
+                if (!odo) return;
+                openingOdo = parseInt(odo);
+            }
+
+            let lat = null, lng = null;
+            try {
+                const pos = await new Promise((res, rej) => {
+                    navigator.geolocation.getCurrentPosition(res, rej, { timeout: 4000 });
+                });
+                lat = pos.coords.latitude;
+                lng = pos.coords.longitude;
+            } catch(e) {}
 
             try {
                 const res = await fetch(`${API_BASE_URL}/api/bookings/start-journey`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ bookingId: rideId, startOdometer: parseInt(odo) })
+                    body: JSON.stringify({
+                        bookingId: rideId,
+                        startOdometer: openingOdo || undefined,
+                        latitude: lat,
+                        longitude: lng
+                    })
                 });
 
                 if (res.ok) {
-                    alert('🚀 JOURNEY STARTED! Timer is now active. Drive safe!');
-                    loadAllJobs(driverId);
+                    const data = await res.json();
+                    
+                    // Show dynamic fare recalculation result
+                    let fareInfoHtml = `<div style="text-align:left; font-size:0.82rem; display:flex; flex-direction:column; gap:6px; margin-top:8px;">`;
+                    
+                    if (data.estimatedDistance && data.dynamicDistance) {
+                        fareInfoHtml += `
+                            <div style="display:flex; justify-content:space-between; opacity:0.6; text-decoration:line-through;">
+                                <span>Estimated Distance:</span>
+                                <span>${data.estimatedDistance}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-weight:700;">
+                                <span>Recalculated Distance:</span>
+                                <span style="color:var(--accent-brand);">${data.dynamicDistance}</span>
+                            </div>
+                        `;
+                    }
+                    if (data.estimatedFare && data.dynamicFare) {
+                        fareInfoHtml += `
+                            <div style="display:flex; justify-content:space-between; opacity:0.6; text-decoration:line-through;">
+                                <span>Estimated Fare:</span>
+                                <span>${data.estimatedFare}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-weight:700; border-top:1px dashed rgba(255,255,255,0.1); padding-top:6px; margin-top:4px;">
+                                <span>Dynamic Fare:</span>
+                                <span style="color:var(--accent-brand);">${data.dynamicFare}</span>
+                            </div>
+                        `;
+                    }
+                    fareInfoHtml += `</div>`;
+                    
+                    Swal.fire({
+                        title: 'Trip Started!',
+                        html: `<div style="font-size:0.9rem;">Real-time GPS tracking is now live.</div>${fareInfoHtml}`,
+                        icon: 'success',
+                        timer: 4000,
+                        showConfirmButton: true,
+                        confirmButtonText: 'OK',
+                        ...swalDarkOpts
+                    });
+                    pollOpportunityJobs();
                 } else {
-                    const error = await res.json();
-                    alert('Error: ' + error.error);
+                    const err = await res.json();
+                    Swal.fire('Error', err.error || 'Failed', 'error');
                 }
-            } catch (err) { alert('Network error during journey start.'); }
+            } catch (err) {
+                Swal.fire('Error', 'Network connection error.', 'error');
+            }
         }
 
-        async function finishTrip(rideId, driverId) {
-            const odo = prompt('JOURNEY CONCLUSION\nPlease enter the Closing Odometer reading:');
-            if (!odo || isNaN(odo)) {
-                alert('Invalid Odometer reading.');
-                return;
+        // Cancel trip request
+        function abortAssignedMission(rideId) {
+            Swal.fire({
+                title: 'Cancel Booking?',
+                text: 'Are you sure you want to request cancellation for this trip assignment?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Abort',
+                ...swalDarkOpts
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/driver/request-cancel`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ bookingId: rideId, driverId: driverData.id, reason: 'Driver requested cancellation' })
+                        });
+                        if (res.ok) {
+                            Swal.fire('Request Sent', 'Cancellation request is pending review.', 'info');
+                            pollOpportunityJobs();
+                        } else {
+                            const err = await res.json();
+                            Swal.fire('Failed', err.error, 'error');
+                        }
+                    } catch(e) { Swal.fire('Error', 'Request failed.', 'error'); }
+                }
+            });
+        }
+
+        // Conclude trip journey
+        async function concludeOngoingTrip(rideId, tripType) {
+            let closingOdo = null;
+            if (tripType === 'rental') {
+                const { value: odo } = await Swal.fire({
+                    title: 'Odometer Audit',
+                    text: 'Please enter the closing odometer reading:',
+                    input: 'number',
+                    inputAttributes: { min: '1' },
+                    showCancelButton: true,
+                    ...swalDarkOpts
+                });
+                if (!odo) return;
+                closingOdo = parseInt(odo);
             }
+
+            let lat = null, lng = null;
+            try {
+                const pos = await new Promise((res, rej) => {
+                    navigator.geolocation.getCurrentPosition(res, rej, { timeout: 4000 });
+                });
+                lat = pos.coords.latitude;
+                lng = pos.coords.longitude;
+            } catch(e) {}
 
             try {
                 const res = await fetch(`${API_BASE_URL}/api/bookings/finish-trip`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ bookingId: rideId, endOdometer: parseInt(odo) })
+                    body: JSON.stringify({
+                        bookingId: rideId,
+                        endOdometer: closingOdo || undefined,
+                        latitude: lat,
+                        longitude: lng
+                    })
                 });
 
                 if (res.ok) {
                     const data = await res.json();
-                    let msg = `🏁 TRIP FINISHED!\nFinal Fare: ${data.finalFare}\nTotal Distance: ${data.distance} KM`;
-                    if (data.duration) msg += `\nTotal Time: ${data.duration} Hours`;
-                    msg += `\n\nNow verify the OTP with the passenger to complete the mission.`;
-                    alert(msg);
-                    loadAllJobs(driverId);
+                    
+                    Swal.fire({
+                        title: 'Invoice Calculated',
+                        html: `
+                            <div style="text-align:left; font-size:0.85rem; display:flex; flex-direction:column; gap:6px;">
+                                <div style="display:flex; justify-content:space-between; font-size:1.1rem; font-weight:800; border-bottom:1px dashed rgba(255,255,255,0.1); padding-bottom:8px; margin-bottom:6px;">
+                                    <span>Total Fare:</span>
+                                    <span style="color:var(--accent-brand);">${data.finalFare}</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span>Distance Traveled:</span>
+                                    <span>${parseFloat(data.distance).toFixed(1)} KM</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span>Duration:</span>
+                                    <span>${parseFloat(data.duration).toFixed(0)} min</span>
+                                </div>
+                                ${data.waitingCharge > 0 ? `
+                                <div style="display:flex; justify-content:space-between; color:var(--danger-red);">
+                                    <span>Extra Waiting Fare:</span>
+                                    <span>₹${data.waitingCharge}</span>
+                                </div>` : ''}
+                            </div>
+                        `,
+                        icon: 'info',
+                        ...swalDarkOpts
+                    });
+
+                    pollOpportunityJobs();
                 } else {
-                    const error = await res.json();
-                    alert('Error: ' + error.error);
+                    const err = await res.json();
+                    Swal.fire('Error', err.error, 'error');
                 }
-            } catch (err) { alert('Network error during trip finish.'); }
+            } catch (err) {
+                Swal.fire('Error', 'Connection failed.', 'error');
+            }
         }
 
-        async function completeRide(rideId, driverId, btn) {
-            const otp = prompt('MISSION VERIFICATION REQUIRED\n Please enter the 4-digit Identity Token provided by the passenger to conclude this mission:');
-            if (!otp) return;
+        // Verify completion with passenger OTP
+        async function verifyCompletionOtp(rideId) {
+            const { value: otp } = await Swal.fire({
+                title: 'Verify Token',
+                text: 'Enter the 4-digit OTP provided by the passenger:',
+                input: 'text',
+                inputAttributes: {
+                    maxlength: '4',
+                    style: 'text-align: center; font-size: 1.8rem; letter-spacing: 6px; font-weight: bold; color: var(--accent-brand);'
+                },
+                showCancelButton: true,
+                ...swalDarkOpts
+            });
+
+            if (!otp || otp.length !== 4) return;
 
             try {
-                const payload = { bookingId: rideId, status: 'completed', otp };
-
                 const res = await fetch(`${API_BASE_URL}/api/bookings/update-status`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        bookingId: rideId,
+                        status: 'completed',
+                        otp: otp
+                    })
                 });
 
                 if (res.ok) {
                     const data = await res.json();
-                    let msg = '🎉 CONGRATULATIONS! Journey verified and completed successfully.\n\n';
                     
+                    let htmlContent = `<span style="font-weight:700; color:var(--success-green);">Ride verified successfully!</span><br><br>`;
                     if (data.vendorProfit > 0) {
-                        const total = parseFloat(data.totalFare.replace(/[^0-9.]/g,'')) || 0;
-                        msg += `📊 MISSION FINANCIAL SUMMARY:\n`;
-                        msg += `--------------------------------\n`;
-                        msg += `Total Collected: ₹${total.toFixed(2)}\n`;
-                        msg += `Partner Markup: -₹${data.vendorProfit.toFixed(2)} (Deducted)\n`;
-                        msg += `--------------------------------\n`;
-                        msg += `YOUR FINAL SHARE: ₹${data.baseFare.toFixed(2)}\n\n`;
-                        msg += `Note: Partner profit has been deducted from your wallet balance as per the service agreement.`;
+                        htmlContent += `
+                            <div style="text-align:left; background:rgba(255,255,255,0.02); padding:12px; border-radius:12px; font-size:0.8rem; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:4px;">
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span>Total Collected:</span>
+                                    <span>₹${parseFloat(data.totalFare.replace(/[^0-9.]/g,'')).toFixed(2)}</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; color:var(--danger-red);">
+                                    <span>Partner Markup (Deducted):</span>
+                                    <span>-₹${data.vendorProfit.toFixed(2)}</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; font-weight:800; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px; margin-top:4px;">
+                                    <span>YOUR NET SHARE:</span>
+                                    <span style="color:var(--accent-brand);">₹${data.baseFare.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        `;
                     } else {
-                        msg += 'Your earnings have been credited to your neural wallet.';
+                        htmlContent += `Ride earnings have been credited to your wallet balance.`;
                     }
-                    
-                    alert(msg);
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 500);
+
+                    await Swal.fire({
+                        title: 'Completed!',
+                        html: htmlContent,
+                        icon: 'success',
+                        ...swalDarkOpts
+                    });
+
+                    await syncDashboardStats();
+                    pollOpportunityJobs();
                 } else {
-                    const error = await res.json();
-                    alert('🚨 VERIFICATION FAILURE: ' + (error.error || 'Identity Token Mismatch. Action Logged.'));
+                    const err = await res.json();
+                    Swal.fire('Failed', err.error || 'OTP verification failed.', 'error');
                 }
-            } catch (err) { alert('Network error during mission conclusion.'); }
+            } catch(e) { Swal.fire('Error', 'Request failed.', 'error'); }
         }
 
+        // Live location update trigger
+        async function sendGpsTrackingUpdate(bookingId, lat, lng, acc) {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/bookings/update-gps-location`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bookingId, latitude: lat, longitude: lng, accuracy: acc })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    const fareEl = document.getElementById('active-fare-val');
+                    if (fareEl && data.newFare) fareEl.textContent = data.newFare;
+
+                    const distEl = document.getElementById('active-dist-val');
+                    if (distEl && data.totalDistance) distEl.textContent = data.totalDistance;
+
+                    const actDistEl = document.getElementById('active-actual-dist');
+                    if (actDistEl && data.actualDistance) actDistEl.textContent = data.actualDistance;
+
+                    const waitingEl = document.getElementById('active-waiting-charge');
+                    if (waitingEl && data.waitingCharge !== undefined) waitingEl.textContent = `₹${data.waitingCharge}`;
+                }
+            } catch(e) {}
+        }
+
+        // Sync statistics details
+        async function syncDashboardStats() {
+            try {
+                // Sync Profile details & wallet
+                const resProfile = await fetch(`${API_BASE_URL}/api/driver/info/${driverData.id}`);
+                if (resProfile.ok) {
+                    const dataProfile = await resProfile.json();
+                    if (dataProfile.success) {
+                        driverData.wallet_balance = dataProfile.driver.wallet_balance;
+                        localStorage.setItem('cityride_pilot', JSON.stringify(driverData));
+                        updateDriverProfileUI();
+                    }
+                }
+
+                // Sync dashboard stats
+                const resStats = await fetch(`${API_BASE_URL}/api/driver/dashboard-stats/${driverData.id}`);
+                if (resStats.ok) {
+                    const stats = await resStats.json();
+                    
+                    document.getElementById('earn-today').textContent = `₹${Math.round(stats.today.today_earnings).toLocaleString('en-IN')}`;
+                    document.getElementById('earn-week').textContent = `₹${Math.round(stats.week.week_earnings).toLocaleString('en-IN')}`;
+                    document.getElementById('earn-totals').textContent = `₹${Math.round(stats.totals.total_earnings).toLocaleString('en-IN')}`;
+
+                    // Update incentives
+                    const count = stats.week.week_rides;
+                    document.getElementById('incentive-progress-txt').textContent = `${count}/10 Rides`;
+                    const percent = Math.min(100, (count / 10) * 100);
+                    document.getElementById('incentive-progress-bar').style.width = `${percent}%`;
+
+                    // Generate dynamic ledger
+                    if (stats.rideHistory) {
+                        const ledgerTransactions = [];
+                        
+                        stats.rideHistory.forEach(ride => {
+                            if (ride.status === 'completed' || ride.status === 'finished') {
+                                const fareNum = parseFloat(ride.fare.replace(/[^0-9.]/g, '')) || 0;
+                                ledgerTransactions.push({
+                                    desc: ride.status === 'completed' ? `Completed ride #B${ride.id}` : `Finished ride #B${ride.id}`,
+                                    date: new Date(ride.journey_end_time || ride.created_at).toLocaleDateString(),
+                                    amount: `+₹${fareNum.toFixed(2)}`,
+                                    type: 'credit'
+                                });
+
+                                if (ride.vendor_markup && parseFloat(ride.vendor_markup) > 0) {
+                                    const markup = parseFloat(ride.vendor_markup);
+                                    ledgerTransactions.push({
+                                        desc: `Partner markup deduction #B${ride.id}`,
+                                        date: new Date(ride.journey_end_time || ride.created_at).toLocaleDateString(),
+                                        amount: `-₹${markup.toFixed(2)}`,
+                                        type: 'debit'
+                                    });
+                                }
+                            } else if (ride.status === 'cancelled') {
+                                ledgerTransactions.push({
+                                    desc: `Cancelled ride #B${ride.id}`,
+                                    date: new Date(ride.created_at).toLocaleDateString(),
+                                    amount: `₹0.00`,
+                                    type: 'debit'
+                                });
+                            }
+                        });
+
+                        const mockPayouts = JSON.parse(localStorage.getItem(`payouts_${driverData.id}`)) || [];
+                        mockPayouts.forEach(p => {
+                            ledgerTransactions.unshift(p);
+                        });
+
+                        renderLedgerList(ledgerTransactions);
+                        renderHistoryList(stats.rideHistory);
+                        window.weeklyEarningsData = stats.rideHistory;
+                    }
+                }
+            } catch (err) {
+                console.warn('Dashboard stats sync failed:', err.message);
+            }
+        }
+
+        // Render standard ledger
+        function renderLedgerList(transactions) {
+            const list = document.getElementById('transaction-ledger-list');
+            if (transactions.length === 0) {
+                list.innerHTML = `<div style="text-align:center; padding:15px; color:var(--text-muted); font-size:0.8rem;">No transactions logged yet.</div>`;
+                return;
+            }
+            list.innerHTML = transactions.slice(0, 10).map(t => `
+                <div class="ledger-item">
+                    <div class="ledger-info">
+                        <span class="ledger-desc">${t.desc}</span>
+                        <span class="ledger-date">${t.date}</span>
+                    </div>
+                    <span class="ledger-amount ${t.type}">${t.amount}</span>
+                </div>
+            `).join('');
+        }
+
+        // Render detailed ride history
+        function renderHistoryList(rides) {
+            const list = document.getElementById('history-list');
+            const badge = document.getElementById('history-count-badge');
+            
+            if (!rides || rides.length === 0) {
+                if (badge) badge.textContent = `0 Trips`;
+                if (list) {
+                    list.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-muted); font-size:0.85rem;">
+                        <i class="ph-bold ph-calendar-blank" style="font-size:2rem; display:block; margin-bottom:8px; color:var(--text-muted);"></i>
+                        No rides recorded in history.
+                    </div>`;
+                }
+                return;
+            }
+            
+            if (badge) badge.textContent = `${rides.length} Trips`;
+            if (list) {
+                list.innerHTML = rides.map(ride => {
+                    const rawDate = ride.journey_end_time || ride.created_at;
+                    let dateStr = 'Unknown Date';
+                    if (rawDate) {
+                        const dObj = new Date(rawDate);
+                        if (!isNaN(dObj.getTime())) {
+                            dateStr = dObj.toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                        }
+                    }
+                    
+                    const statusClass = (ride.status || '').toLowerCase();
+                    const statusLabel = ride.status ? (ride.status.charAt(0).toUpperCase() + ride.status.slice(1)) : 'Unknown';
+                    const typeLabel = (ride.trip_type || 'local').toUpperCase();
+                    const vehicleLabel = (ride.vehicle_type || 'sedan').toUpperCase();
+                    const distanceStr = ride.actual_distance || ride.distance || '0.0 KM';
+                    
+                    return `
+                        <div class="history-card">
+                            <div class="history-header">
+                                <span class="history-id">Booking #B${ride.id}</span>
+                                <span class="history-status ${statusClass}">${statusLabel}</span>
+                            </div>
+                            <div class="history-datetime">
+                                <i class="ph-bold ph-clock"></i> ${dateStr}
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-white); font-weight: 700; display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.03); padding: 6px 10px; border-radius: 8px; margin-top: 2px;">
+                                <i class="ph-bold ph-user-circle" style="color: var(--accent-brand); font-size: 0.9rem;"></i>
+                                <span>${ride.customer_name || 'Anonymous Passenger'}</span>
+                                ${ride.customer_phone ? `<span style="color: var(--text-gray); font-size: 0.65rem; font-weight: 500; margin-left: auto;">${ride.customer_phone}</span>` : ''}
+                            </div>
+                            <div class="history-route">
+                                <div class="history-node">
+                                    <span class="history-dot pickup"></span>
+                                    <div class="history-addr" title="${ride.pickup_loc}">${ride.pickup_loc}</div>
+                                </div>
+                                <div class="history-node">
+                                    <span class="history-dot drop"></span>
+                                    <div class="history-addr" title="${ride.drop_loc}">${ride.drop_loc}</div>
+                                </div>
+                            </div>
+                            <div class="history-footer">
+                                <div class="history-metrics">
+                                    <span>Type: <span>${typeLabel}</span></span>
+                                    <span>Dist: <span>${distanceStr}</span></span>
+                                    <span>Veh: <span>${vehicleLabel}</span></span>
+                                </div>
+                                <div class="history-fare">${ride.status === 'cancelled' ? '₹0.00' : (ride.fare || '₹0')}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Withdraw payout simulated action
+        async function triggerPayoutRequest() {
+            const maxVal = parseFloat(driverData.wallet_balance) || 0;
+            if (maxVal <= 0) {
+                Swal.fire({
+                    title: 'No Balance',
+                    text: 'You have no withdrawable earnings in your wallet.',
+                    icon: 'error',
+                    ...swalDarkOpts
+                });
+                return;
+            }
+
+            const { value: amt } = await Swal.fire({
+                title: 'Withdraw Earnings',
+                text: `Enter amount to transfer to bank (Max: ₹${maxVal.toFixed(2)}):`,
+                input: 'number',
+                inputAttributes: { min: '100', max: maxVal.toString() },
+                showCancelButton: true,
+                ...swalDarkOpts
+            });
+
+            if (!amt) return;
+            const withdrawAmt = parseFloat(amt);
+            if (isNaN(withdrawAmt) || withdrawAmt < 100 || withdrawAmt > maxVal) {
+                Swal.fire('Invalid Amount', 'Min withdrawal is ₹100.00 and cannot exceed current wallet balance.', 'error');
+                return;
+            }
+
+            const updatedBal = maxVal - withdrawAmt;
+            driverData.wallet_balance = updatedBal;
+            localStorage.setItem('cityride_pilot', JSON.stringify(driverData));
+            updateDriverProfileUI();
+
+            const mockPayouts = JSON.parse(localStorage.getItem(`payouts_${driverData.id}`)) || [];
+            mockPayouts.push({
+                desc: 'Instant Payout Transfer to Bank',
+                date: new Date().toLocaleDateString(),
+                amount: `-₹${withdrawAmt.toFixed(2)}`,
+                type: 'debit'
+            });
+            localStorage.setItem(`payouts_${driverData.id}`, JSON.stringify(mockPayouts));
+
+            await syncDashboardStats();
+
+            Swal.fire({
+                title: 'Withdrawal Initiated',
+                text: `₹${withdrawAmt.toFixed(2)} is being dispatched to your registered Bank Account. Will reflect in 5 minutes.`,
+                icon: 'success',
+                ...swalDarkOpts
+            });
+        }
+
+        // Draw Line chart using Chart.js
+        function renderEarningsChart() {
+            const ctx = document.getElementById('earningsChart');
+            if (!ctx) return;
+
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const earningsMap = { 'Sun': 0, 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0 };
+
+            if (window.weeklyEarningsData) {
+                window.weeklyEarningsData.forEach(ride => {
+                    if (ride.status === 'completed') {
+                        const date = new Date(ride.journey_end_time || ride.created_at);
+                        const dayName = days[date.getDay()];
+                        const fareNum = parseFloat(ride.fare.replace(/[^0-9.]/g, '')) || 0;
+                        earningsMap[dayName] += fareNum;
+                    }
+                });
+            }
+
+            const chartData = days.map(d => earningsMap[d]);
+
+            if (earningsChartInstance) {
+                earningsChartInstance.destroy();
+            }
+
+            earningsChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'Earnings (₹)',
+                        data: chartData,
+                        borderColor: '#B71C1C',
+                        backgroundColor: 'rgba(183, 28, 28, 0.05)',
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.45,
+                        pointBackgroundColor: '#B71C1C',
+                        pointBorderColor: '#000',
+                        pointBorderWidth: 1.5,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#8e9297', font: { size: 9, family: 'Outfit' } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                            ticks: { color: '#8e9297', font: { size: 9, family: 'Outfit' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Trigger distress beacon
+        function triggerEmergencySOS() {
+            Swal.fire({
+                title: '⚠️ EMERGENCY ACTIVE',
+                text: 'Are you sure you want to trigger the SOS distress beacon? This will alert Ground Control Operations and transmit your live location coordinates.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'ACTIVATE BEACON',
+                confirmButtonColor: '#ff3b30',
+                cancelButtonText: 'Cancel',
+                ...swalDarkOpts
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'SOS Beacon Dispatched',
+                        text: 'Ground Control support unit and local authorities have been notified. Stay in a safe area, your GPS signal is locked.',
+                        icon: 'success',
+                        confirmButtonColor: '#ff3b30',
+                        ...swalDarkOpts
+                    });
+                }
+            });
+        }
+
+        // Logout
         function logoutUser() {
             localStorage.removeItem('cityride_pilot');
             window.location.href = '/driver-login';
         }
-
-        function openOpportunityModal(jobId = null) {
-            currentTacticalJobId = jobId;
-            const modal = document.getElementById('opp-map-modal');
-            modal.style.display = 'flex';
-            
-            if (opportunityMap) {
-                setTimeout(() => {
-                    opportunityMap.invalidateSize();
-                    // Render/Recenter after size is valid and animation is nearly done
-                    renderOpportunityMap(currentTacticalJobId);
-                }, 400);
-            } else {
-                 renderOpportunityMap(currentTacticalJobId);
-            }
-        }
-
-        function closeOpportunityModal() {
-            currentTacticalJobId = null;
-            document.getElementById('opp-map-modal').style.display = 'none';
-        }
-
-        async function requestCancel(rideId, driverId) {
-            const reason = prompt('Please specify the reason for aborting this mission:');
-            if (!reason) return;
-
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/driver/request-cancel`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ bookingId: rideId, driverId, reason })
-                });
-
-                if (res.ok) {
-                    showToast('Abort Requested', 'Ground Control has been notified. This mission remains active until approved.', 'info');
-                    loadAllJobs(driverId);
-                } else {
-                    const data = await res.json();
-                    alert(`Request failed: ${data.error}`);
-                }
-            } catch (err) { alert('Network error during cancellation request.'); }
-        }
-
     </script>
-    <script>
-        window.addEventListener('load', () => {
-            const splash = document.getElementById('splash-screen');
-            if (splash) {
-                setTimeout(() => {
-                    splash.classList.add('splash-hidden');
-                    document.body.style.setProperty('overflow', 'auto', 'important');
-                }, 3200);
-            }
-        });
-    </script>
+
 </body>
-
 </html>

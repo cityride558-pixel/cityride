@@ -120,6 +120,7 @@
             <div class="nav-item active" onclick="switchTab('booking', this)">📅 Book New Ride</div>
             <div class="nav-item" onclick="switchTab('history', this)">📜 Partner History</div>
             <div class="nav-item" onclick="switchTab('earnings', this)">💰 My Earnings</div>
+            <div class="nav-item" onclick="switchTab('tariffs', this)">⚙️ Manage Tariffs</div>
         </div>
         <div class="nav-item" onclick="logoutVendor()">🚪 Exit Portal</div>
     </aside>
@@ -183,9 +184,23 @@
                                 </select>
                             </div>
 
+                            <div style="grid-column: span 2; margin-top: 1rem; border-top: 1px solid #eee; padding-top: 1rem;">
+                                <h4 style="margin: 0 0 1rem 0; color: var(--primary-red); font-size: 0.95rem;">Passenger Details</h4>
+                            </div>
+
+                            <div class="input-group" style="grid-column: span 2;">
+                                <label>Passenger Full Name</label>
+                                <input type="text" id="passenger-name" placeholder="John Doe" required style="width: 100%;">
+                            </div>
+
+                            <div class="input-group">
+                                <label>Passenger Phone</label>
+                                <input type="tel" id="passenger-phone" placeholder="9876543210" required style="width: 100%;">
+                            </div>
+
                             <div class="input-group">
                                 <label>Passengers</label>
-                                <select id="passengers">
+                                <select id="passengers" style="width: 100%;">
                                     <option value="1">1 Passenger</option>
                                     <option value="2">2 Passengers</option>
                                     <option value="3">3 Passengers</option>
@@ -195,20 +210,6 @@
                                 </select>
                             </div>
 
-                        </div>
-
-                        <div class="markup-box">
-                            <h4 style="display: flex; justify-content: space-between; align-items: center;">
-                                Vendor Profit Margin (Markup)
-                                <span id="markup-tag" style="background: var(--primary-red); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem;">LOCKED</span>
-                            </h4>
-                            <div class="markup-input-wrap">
-                                <span style="font-size: 1.5rem; font-weight: 700;">₹</span>
-                                <input type="number" id="v-markup" value="100" min="0" oninput="calculateVendorFare()">
-                                <div style="font-size: 0.8rem; color: #666; margin-left: 10px;">
-                                    This amount is added to the base fare as your commission.
-                                </div>
-                            </div>
                         </div>
 
                         <div id="vehicle-selection-container" class="vehicle-options-grid" style="margin-top: 2rem;">
@@ -232,7 +233,7 @@
                             <span id="profit-display">+ ₹100.00</span>
                         </div>
                         <div class="fare-row total">
-                            <span>Total (Customer Pays):</span>
+                            <span>Total (Customer Pays Approx.):</span>
                             <span id="total-fare-display">₹100.00</span>
                         </div>
                     </div>
@@ -373,10 +374,36 @@
                     <p>Accumulated from all completed missions.</p>
                 </div>
                 <div class="stat-card">
-                    <h4>Current Markup</h4>
-                    <span class="value">₹100.00</span>
-                    <p>Current setting for new bookings.</p>
+                    <h4>Active Custom Rates</h4>
+                    <span class="value" id="custom-tariff-count">0</span>
+                    <p>Number of overridden rate tariffs.</p>
                 </div>
+            </div>
+        </div>
+
+        <div id="tariffs-section" class="tab-content" style="display:none">
+            <div class="vendor-header">
+                <div>
+                    <h1>My Rate <span class="text-accent">Tariffs</span></h1>
+                    <p>Configure custom pricing rates and fare rules for your bookings.</p>
+                </div>
+            </div>
+
+            <div class="booking-card" style="margin-top:2rem">
+                <table class="history-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Vehicle Type</th>
+                            <th>Trip Category</th>
+                            <th>Current Rates</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vendor-tariffs-tbody">
+                        <!-- Loaded dynamically -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </main>
@@ -395,6 +422,29 @@
         </div>
     </div>
 
+    <!-- Vendor Tariff Configuration Modal -->
+    <div id="vendor-tariff-modal" class="map-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 20000; align-items: center; justify-content: center;">
+        <div class="map-modal-content" style="background: white; max-width: 600px; width: 95%; border-radius: 20px; overflow: hidden; max-height: 90vh;">
+            <div class="map-header" style="padding: 1.5rem; display: flex; justify-content: space-between; border-bottom: 1px solid #eee; background: var(--primary-red); color: white;">
+                <h3 style="margin: 0; color: white;">Configure Custom Rates</h3>
+                <button onclick="closeVendorTariffModal()" style="background:none; border:none; color: white; font-size: 1.5rem; cursor: pointer;">&times;</button>
+            </div>
+            <div style="padding: 2rem;">
+                <p id="vendor-tariff-info" style="margin-bottom: 1.5rem; font-weight: 700; color: var(--primary-red); font-size: 1.1rem;"></p>
+                <form id="vendor-tariff-form">
+                    <input type="hidden" id="edit-vt-vehicle">
+                    <input type="hidden" id="edit-vt-category">
+                    <div id="vendor-tariff-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <!-- Dynamic fields based on category -->
+                    </div>
+                    <div style="margin-top: 2rem;">
+                        <button type="submit" class="btn btn-primary" style="width: 100%; background: var(--primary-red); color: white; padding: 12px; border-radius: 8px; font-weight: 700; border: none; cursor: pointer;">Save Rates</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Standalone logic for Vendor Dashboard -->
     <script>
         const VEHICLE_ICONS = {
@@ -403,7 +453,7 @@
             suv: `<svg viewBox="0 0 24 24"><path d="M17,11l-1.5-4.5h-7L7,11H17z M18.92,6.01C18.72,5.42,18.16,5,17.5,5h-11c-0.66,0-1.21,0.42-1.42,1.01L3,12v8 c0,0.55,0.45,1,1,1h1c0.55,0,1-0.45,1-1v-1h12v1c0,0.55,0.45,1,1,1h1c0.55,0,1-0.45,1-1v-8L18.92,6.01z"/></svg>`
         };
 
-        const pricing = {
+        const systemPricing = {
             bike: {
                 name: 'Classy Bike Taxi', capacity: '1 Seater', maxPassengers: 1,
                 local: { base: 0, perKm: 10, minKm: 5 },
@@ -435,6 +485,8 @@
                 }
             }
         };
+
+        const pricing = JSON.parse(JSON.stringify(systemPricing));
 
         // UI Controls
         function openRateChart() { document.getElementById('rate-modal').style.display = 'flex'; }
@@ -504,8 +556,22 @@
 
         async function fetchAndUpdateTariffs() {
             try {
-                const res = await fetch('/api/tariffs');
-                if (!res.ok) throw new Error('Failed to fetch tariffs');
+                const systemRes = await fetch(`${API_BASE_URL}/api/tariffs`);
+                if (!systemRes.ok) throw new Error('Failed to fetch system tariffs');
+                const systemTariffs = await systemRes.json();
+                
+                systemTariffs.forEach(t => {
+                    const vType = t.vehicle_type;
+                    const cat = t.category;
+                    const config = typeof t.config === 'string' ? JSON.parse(t.config) : t.config;
+                    
+                    if (systemPricing[vType]) {
+                        systemPricing[vType][cat] = config;
+                    }
+                });
+
+                const res = await fetch(`${API_BASE_URL}/api/vendor/tariffs/${vendorData.id}`);
+                if (!res.ok) throw new Error('Failed to fetch vendor tariffs');
                 const tariffs = await res.json();
                 
                 tariffs.forEach(t => {
@@ -517,6 +583,13 @@
                         pricing[vType][cat] = config;
                     }
                 });
+
+                // Update custom tariff count display
+                const customCount = tariffs.filter(t => t.is_custom).length;
+                const customTariffCountEl = document.getElementById('custom-tariff-count');
+                if (customTariffCountEl) {
+                    customTariffCountEl.textContent = customCount;
+                }
                 
                 // Re-render rate chart
                 renderRateChart();
@@ -538,6 +611,8 @@
         let currentDistance = 0;
         let selectedVehicle = null;
         let selectedFare = 0;
+        let selectedBaseFare = 0;
+        let selectedMarkup = 0;
 
         // Date Restrictions
         const todayStr = new Date().toISOString().split('T')[0];
@@ -598,8 +673,6 @@
                 if (outstationEl) {
                     return setCategory('outstation', outstationEl);
                 }
-                container.innerHTML = '';
-                return;
             }
             
             // Update distance display immediately
@@ -609,8 +682,6 @@
             const passengers = parseInt(document.getElementById('passengers').value);
             container.innerHTML = '';
 
-            const markup = parseFloat(document.getElementById('v-markup').value || 0);
-            
             // For Round Trip Days
             const start = new Date(document.getElementById('pickup-date').value);
             const end = new Date(document.getElementById('return-date').value || start);
@@ -618,54 +689,70 @@
 
             const types = currentCategory === 'outstation' ? ['oneway', 'round'] : [currentCategory];
 
+            const getSurchargeAndBaseFare = (pricingData, vType, tType) => {
+                const info = pricingData[vType];
+                const config = info[tType];
+                if (!config) return null;
+
+                let baseFare = 0;
+                let peakLabel = '';
+
+                const getPeakSurcharge = (timeStr) => {
+                    if (!timeStr) return 0;
+                    const [h, m] = timeStr.split(':').map(Number);
+                    const tm = h * 60 + m;
+                    // Morning Peak: 8 AM to 11 AM
+                    if (tm >= 480 && tm <= 660) return 0.25;
+                    // Evening Peak: 4 PM to 9 PM
+                    if (tm >= 960 && tm <= 1260) return 0.25;
+                    return 0;
+                };
+
+                const peakMult = currentCategory === 'local' ? getPeakSurcharge(document.getElementById('pickup-time').value) : 0;
+
+                if (tType === 'local') {
+                    const extraKm = Math.max(0, currentDistance - config.minKm);
+                    const baseCharge = config.base + (extraKm * config.perKm);
+                    const peakCharge = baseCharge * peakMult;
+                    if (peakMult > 0) peakLabel = ` [Peak +25%]`;
+                    
+                    const minBill = vType === 'suv' ? 300 : (vType === 'sedan' ? 200 : 50);
+                    baseFare = Math.max(minBill, baseCharge + peakCharge);
+                } else if (tType === 'oneway') {
+                    const billableKm = Math.max(currentDistance, 130);
+                    const driverAllowance = billableKm > 250 ? 600 : 400;
+                    baseFare = (billableKm * config.perKm) + (vType === 'bike' ? 0 : driverAllowance);
+                } else if (tType === 'round') {
+                    const billableKm = Math.max(currentDistance * 2, 250, (config.minKmForTrip || 250) * tripDays);
+                    const driverAllowance = billableKm > 250 ? 600 : 400;
+                    baseFare = (billableKm * config.perKm) + (vType === 'bike' ? 0 : driverAllowance * tripDays);
+                } else if (tType === 'rental') {
+                    if (!info.rental) return null;
+                    const pkg = document.getElementById('rental-package').value;
+                    const rConfig = info.rental[pkg];
+                    if (!rConfig) return null;
+                    baseFare = rConfig.base;
+                }
+
+                baseFare = Math.ceil(baseFare * 1.05); // Incl GST
+                return { baseFare, peakLabel };
+            };
+
             types.forEach(tType => {
                 Object.keys(pricing).forEach(vType => {
                     const info = pricing[vType];
-                    const config = info[tType];
-                    if (!config) return;
+                    
+                    const systemFareData = getSurchargeAndBaseFare(systemPricing, vType, tType);
+                    const vendorFareData = getSurchargeAndBaseFare(pricing, vType, tType);
+                    if (!systemFareData || !vendorFareData) return;
 
-                    let baseFare = 0;
-                    let peakLabel = '';
+                    const sysBaseFare = systemFareData.baseFare;
+                    const vendBaseFare = vendorFareData.baseFare;
+                    const peakLabel = vendorFareData.peakLabel;
+                    
+                    const totalFare = Math.max(sysBaseFare, vendBaseFare);
+                    const markup = totalFare - sysBaseFare;
 
-                    const getPeakSurcharge = (timeStr) => {
-                        if (!timeStr) return 0;
-                        const [h, m] = timeStr.split(':').map(Number);
-                        const tm = h * 60 + m;
-                        // Morning Peak: 8 AM to 11 AM
-                        if (tm >= 480 && tm <= 660) return 0.25;
-                        // Evening Peak: 4 PM to 9 PM
-                        if (tm >= 960 && tm <= 1260) return 0.25;
-                        return 0;
-                    };
-
-                    const peakMult = currentCategory === 'local' ? getPeakSurcharge(document.getElementById('pickup-time').value) : 0;
-
-                    if (tType === 'local') {
-                        const extraKm = Math.max(0, currentDistance - config.minKm);
-                        const baseCharge = config.base + (extraKm * config.perKm);
-                        const peakCharge = baseCharge * peakMult;
-                        if (peakMult > 0) peakLabel = ` [Peak +25%]`;
-                        
-                        const minBill = vType === 'suv' ? 300 : (vType === 'sedan' ? 200 : 50);
-                        baseFare = Math.max(minBill, baseCharge + peakCharge);
-                    } else if (tType === 'oneway') {
-                        const billableKm = Math.max(currentDistance, 130);
-                        const driverAllowance = billableKm > 250 ? 600 : 400;
-                        baseFare = (billableKm * config.perKm) + (vType === 'bike' ? 0 : driverAllowance);
-                    } else if (tType === 'round') {
-                        const billableKm = Math.max(currentDistance * 2, 250, (config.minKmForTrip || 250) * tripDays);
-                        const driverAllowance = billableKm > 250 ? 600 : 400;
-                        baseFare = (billableKm * config.perKm) + (vType === 'bike' ? 0 : driverAllowance * tripDays);
-                    } else if (tType === 'rental') {
-                        if (!info.rental) return;
-                        const pkg = document.getElementById('rental-package').value;
-                        const config = info.rental[pkg];
-                        if (!config) return;
-                        baseFare = config.base;
-                    }
-
-                    baseFare = Math.ceil(baseFare * 1.05); // Incl GST
-                    const totalFare = baseFare + markup;
                     const isDisabled = passengers > info.maxPassengers;
 
                     const card = document.createElement('div');
@@ -678,11 +765,11 @@
                             <div style="width:40px; height:40px;">${VEHICLE_ICONS[vType]}</div>
                             <div>
                                 <div style="font-weight:700;">${info.name} (${tType.toUpperCase()})${peakLabel}</div>
-                                <div style="font-size:0.75rem; color:#666;">Base: ₹${baseFare} | Markup: ₹${markup}</div>
+                                <div style="font-size:0.75rem; color:#666;">Base: ₹${sysBaseFare} | Markup: ₹${markup}</div>
                             </div>
                         </div>
                         <div style="text-align:right;">
-                            <div style="font-weight:800; color:var(--primary-red); font-size:1.1rem;">₹${totalFare}</div>
+                            <div style="font-weight:800; color:var(--primary-red); font-size:1.1rem;">₹${totalFare} <span style="font-size: 0.65rem; font-weight: normal; color: #888;">Approx.</span></div>
                             <div style="font-size:0.7rem; color:#888;">Customer Pays</div>
                         </div>
                     `;
@@ -690,10 +777,13 @@
                     if (!isDisabled) {
                         card.onclick = () => {
                             selectedVehicle = `${vType}_${tType}`;
+                            selectedBaseFare = sysBaseFare;
+                            selectedMarkup = markup;
+                            selectedFare = totalFare;
                             
-                            document.getElementById('base-fare-display').textContent = `₹${baseFare.toFixed(2)}`;
-                            document.getElementById('profit-display').textContent = `+ ₹${markup.toFixed(2)}`;
-                            document.getElementById('total-fare-display').textContent = `₹${totalFare.toFixed(2)}`;
+                            document.getElementById('base-fare-display').textContent = `₹${selectedBaseFare.toFixed(2)}`;
+                            document.getElementById('profit-display').textContent = `+ ₹${selectedMarkup.toFixed(2)}`;
+                            document.getElementById('total-fare-display').textContent = `₹${selectedFare.toFixed(2)}`;
                             document.getElementById('dist-display').textContent = currentCategory === 'rental' ? 'N/A' : `${currentDistance} KM`;
                             document.getElementById('type-display').textContent = tType.toUpperCase();
                             
@@ -704,9 +794,12 @@
 
                         // Real-time update for already selected vehicle
                         if (isSelected) {
-                            document.getElementById('base-fare-display').textContent = `₹${baseFare.toFixed(2)}`;
-                            document.getElementById('profit-display').textContent = `+ ₹${markup.toFixed(2)}`;
-                            document.getElementById('total-fare-display').textContent = `₹${totalFare.toFixed(2)}`;
+                            selectedBaseFare = sysBaseFare;
+                            selectedMarkup = markup;
+                            selectedFare = totalFare;
+                            document.getElementById('base-fare-display').textContent = `₹${selectedBaseFare.toFixed(2)}`;
+                            document.getElementById('profit-display').textContent = `+ ₹${selectedMarkup.toFixed(2)}`;
+                            document.getElementById('total-fare-display').textContent = `₹${selectedFare.toFixed(2)}`;
                             document.getElementById('dist-display').textContent = currentCategory === 'rental' ? 'N/A' : `${currentDistance} KM`;
                             document.getElementById('type-display').textContent = tType.toUpperCase();
                         }
@@ -831,8 +924,13 @@
         async function handleVendorBooking() {
             if (!selectedVehicle) return alert('Please select a vehicle type.');
             
-            const markup = parseFloat(document.getElementById('v-markup').value || 0);
-            const baseFareText = document.getElementById('base-fare-display').textContent;
+            const pName = document.getElementById('passenger-name').value.trim();
+            const pPhone = document.getElementById('passenger-phone').value.trim();
+            if (!pName || !pPhone) {
+                return alert('Please enter Passenger Details.');
+            }
+
+            const markup = selectedMarkup;
             
             const bookingData = {
                 vendorId: vendorData.id,
@@ -847,7 +945,9 @@
                 fare: document.getElementById('total-fare-display').textContent, // Total Fare (Base + Markup) for Drivers
                 distance: document.getElementById('dist-display').textContent,
                 tripType: document.getElementById('type-display').textContent.toLowerCase(),
-                passengers: document.getElementById('passengers').value
+                passengers: document.getElementById('passengers').value,
+                passengerName: pName,
+                passengerPhone: pPhone
             };
 
             if (!bookingData.pickup || (!bookingData.drop && currentCategory !== 'rental')) {
@@ -954,12 +1054,156 @@
             }
             
             if (tabId === 'history') loadVendorHistory();
+            if (tabId === 'tariffs') loadVendorTariffs();
         }
 
         function logoutVendor() {
             localStorage.removeItem('cityride_vendor');
             window.location.href = '/vendor-login';
         }
+
+        // --- Vendor Tariff Utility Functions ---
+        let _vendorTariffsData = [];
+        async function loadVendorTariffs() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/vendor/tariffs/${vendorData.id}`);
+                if (!res.ok) throw new Error('Failed to fetch tariffs');
+                const tariffs = await res.json();
+                _vendorTariffsData = tariffs;
+
+                const tbody = document.getElementById('vendor-tariffs-tbody');
+                tbody.innerHTML = '';
+
+                tariffs.forEach(t => {
+                    const config = typeof t.config === 'string' ? JSON.parse(t.config) : t.config;
+                    let rateString = '';
+                    if (t.category === 'rental') {
+                        rateString = Object.keys(config).map(pkg => `${pkg}: ₹${config[pkg].base} base`).join(', ');
+                    } else {
+                        rateString = `Base: ₹${config.base || 0} | ₹${config.perKm || 0}/KM | Min: ${config.minKm || config.minKmPerDay || 0}KM`;
+                    }
+
+                    const statusPill = t.is_custom 
+                        ? `<span style="background:#28a745; color:white; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">Custom Rate</span>`
+                        : `<span style="background:#6c757d; color:white; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">Default (Admin)</span>`;
+
+                    const row = `
+                        <tr>
+                            <td><strong>${t.vehicle_type.toUpperCase()}</strong></td>
+                            <td><span class="status-pill status-${t.category === 'rental' ? 'completed' : 'ongoing'}">${t.category.toUpperCase()}</span></td>
+                            <td>${rateString}</td>
+                            <td>${statusPill}</td>
+                            <td>
+                                <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="openVendorTariffModal('${t.vehicle_type}', '${t.category}')">⚙️ Configure</button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function openVendorTariffModal(vehicleType, category) {
+            const t = _vendorTariffsData.find(x => x.vehicle_type === vehicleType && x.category === category);
+            if (!t) return;
+
+            const config = typeof t.config === 'string' ? JSON.parse(t.config) : t.config;
+            document.getElementById('edit-vt-vehicle').value = vehicleType;
+            document.getElementById('edit-vt-category').value = category;
+            document.getElementById('vendor-tariff-info').textContent = `${vehicleType.toUpperCase()} - ${category.toUpperCase()}`;
+
+            const container = document.getElementById('vendor-tariff-fields-container');
+            container.innerHTML = '';
+
+            if (category === 'rental') {
+                Object.keys(config).forEach(pkg => {
+                    const pkgData = config[pkg];
+                    container.innerHTML += `
+                        <div style="grid-column: span 2; padding: 10px; background: #f8f8f8; border-radius: 8px; font-weight: 700; font-size: 0.8rem; margin-top: 10px;">Package: ${pkg}</div>
+                        <div class="input-group">
+                            <label style="color: #666;">Base Fare (₹)</label>
+                            <input type="number" step="0.01" value="${pkgData.base}" data-pkg="${pkg}" data-key="base" required style="width: 100%; border: 1px solid #ccc; padding: 8px; border-radius: 6px;">
+                        </div>
+                        <div class="input-group">
+                            <label style="color: #666;">Extra KM (₹)</label>
+                            <input type="number" step="0.01" value="${pkgData.extraKm}" data-pkg="${pkg}" data-key="extraKm" required style="width: 100%; border: 1px solid #ccc; padding: 8px; border-radius: 6px;">
+                        </div>
+                        <div class="input-group">
+                            <label style="color: #666;">Extra Hour (₹)</label>
+                            <input type="number" step="0.01" value="${pkgData.extraHour}" data-pkg="${pkg}" data-key="extraHour" required style="width: 100%; border: 1px solid #ccc; padding: 8px; border-radius: 6px;">
+                        </div>
+                        <div style="height: 5px; grid-column: span 2;"></div>
+                    `;
+                });
+            } else {
+                container.innerHTML = `
+                    <div class="input-group">
+                        <label style="color: #666;">Base Fare (₹)</label>
+                        <input type="number" step="0.01" id="edit-vt-base" value="${config.base || 0}" required style="width: 100%; border: 1px solid #ccc; padding: 8px; border-radius: 6px;">
+                    </div>
+                    <div class="input-group">
+                        <label style="color: #666;">Rate Per KM (₹)</label>
+                        <input type="number" step="0.01" id="edit-vt-perKm" value="${config.perKm || 0}" required style="width: 100%; border: 1px solid #ccc; padding: 8px; border-radius: 6px;">
+                    </div>
+                    <div class="input-group" style="grid-column: span 2;">
+                        <label style="color: #666;">${category === 'round' ? 'Min KM Per Day' : 'Min KM Distance'}</label>
+                        <input type="number" id="edit-vt-min" value="${config.minKm || config.minKmPerDay || 0}" required style="width: 100%; border: 1px solid #ccc; padding: 8px; border-radius: 6px;">
+                    </div>
+                `;
+            }
+
+            document.getElementById('vendor-tariff-modal').style.display = 'flex';
+        }
+
+        function closeVendorTariffModal() {
+            document.getElementById('vendor-tariff-modal').style.display = 'none';
+        }
+
+        document.getElementById('vendor-tariff-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const vehicleType = document.getElementById('edit-vt-vehicle').value;
+            const category = document.getElementById('edit-vt-category').value;
+            let config = {};
+
+            if (category === 'rental') {
+                const inputs = document.querySelectorAll('#vendor-tariff-fields-container input');
+                inputs.forEach(input => {
+                    const pkg = input.dataset.pkg;
+                    const key = input.dataset.key;
+                    if (!config[pkg]) config[pkg] = {};
+                    config[pkg][key] = parseFloat(input.value);
+                });
+            } else {
+                config = {
+                    base: parseFloat(document.getElementById('edit-vt-base').value),
+                    perKm: parseFloat(document.getElementById('edit-vt-perKm').value)
+                };
+                const minVal = parseInt(document.getElementById('edit-vt-min').value);
+                if (category === 'round') config.minKmPerDay = minVal;
+                else config.minKm = minVal;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/vendor/update-tariff`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vendorId: vendorData.id, vehicleType, category, config })
+                });
+                if (res.ok) {
+                    alert('Tariff updated successfully!');
+                    closeVendorTariffModal();
+                    await fetchAndUpdateTariffs(); // Reload local tariffs memory
+                    await loadVendorTariffs(); // Reload tariff settings table
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Failed to update tariff');
+                }
+            } catch (err) {
+                alert('Update failed');
+            }
+        });
     </script>
 </body>
 </html>

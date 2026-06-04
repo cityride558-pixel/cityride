@@ -13,7 +13,41 @@
     <!-- Leaflet for Mission Tracking -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- SweetAlert2 for Premium Modals -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
+        :root {
+            --primary-red: #B71C1C;
+            --primary-red-hover: #8E1515;
+            --dark-charcoal: #ffffff;
+            --text-main: #ffffff;
+            --text-muted: #8e9297;
+            --light-grey: #090a0f;
+            --white: #14161d;
+            --accents: rgba(255, 255, 255, 0.06);
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.5);
+            --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.6);
+            --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.8);
+            --border-color: rgba(255, 255, 255, 0.06);
+            --success-green: #34c759;
+            --danger-red: #ff3b30;
+            --warning-amber: #ff9f0a;
+        }
+
+        body {
+            background-color: var(--light-grey) !important;
+            color: var(--text-main) !important;
+        }
+
+        .header {
+            background: rgba(14, 16, 22, 0.95) !important;
+            border-bottom: 1px solid var(--border-color) !important;
+        }
+
+        .logo {
+            color: var(--text-main) !important;
+        }
+
         .dashboard-container {
             padding: 120px 0;
             background: var(--light-grey);
@@ -27,13 +61,49 @@
             align-items: center;
         }
 
+        .dashboard-header h1 {
+            color: var(--text-main) !important;
+        }
+
+        .dashboard-header p {
+            color: var(--text-muted) !important;
+        }
+
         .history-card {
             background: var(--white);
             border-radius: 24px;
             padding: 3rem;
             box-shadow: var(--shadow-md);
             margin-bottom: 2rem;
-            border: 1px solid var(--accents);
+            border: 1px solid var(--border-color);
+        }
+
+        .history-card h3 {
+            color: var(--text-main) !important;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Custom SweetAlert Dark Theme styling */
+        .swal2-popup {
+            background: #14161d !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.06) !important;
+            border-radius: 20px !important;
+        }
+        .swal2-title {
+            color: #ffffff !important;
+        }
+        .swal2-html-container {
+            color: #8e9297 !important;
+        }
+        .swal2-input, .swal2-textarea, .swal2-select {
+            background: #090a0f !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        }
+        .swal2-validation-message {
+            background: rgba(255, 59, 48, 0.1) !important;
+            color: #ff3b30 !important;
         }
 
         #mission-map {
@@ -98,12 +168,12 @@
             text-transform: uppercase;
             font-size: 0.8rem;
             letter-spacing: 0.1em;
-            border-bottom: 1px solid var(--accents);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .rides-table td {
             padding: 1.5rem;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
             font-size: 0.95rem;
         }
 
@@ -116,33 +186,33 @@
         }
 
         .status-pending {
-            background: #FFF3CD;
-            color: #856404;
+            background: rgba(255, 159, 10, 0.1);
+            color: var(--warning-amber);
         }
 
         .status-assigned {
-            background: #CCE5FF;
-            color: #004085;
+            background: rgba(10, 132, 255, 0.1);
+            color: #0a84ff;
         }
 
         .status-completed {
-            background: #D4EDDA;
-            color: #155724;
+            background: rgba(52, 199, 89, 0.1);
+            color: var(--success-green);
         }
 
         .status-cancelled {
-            background: #F8D7DA;
-            color: #721C24;
+            background: rgba(255, 59, 48, 0.1);
+            color: var(--danger-red);
         }
 
         .status-ongoing {
-            background: #e1f5fe;
-            color: #01579b;
+            background: rgba(10, 132, 255, 0.15);
+            color: #0a84ff;
         }
 
         .status-finished {
-            background: #fff3e0;
-            color: #e65100;
+            background: rgba(183, 28, 28, 0.15);
+            color: var(--primary-red);
         }
 
         /* Ban Banner */
@@ -199,6 +269,22 @@
         }
         .btn-cancel-ride:hover {
             background: #d32f2f;
+            color: white;
+        }
+
+        .btn-rebook-ride {
+            background: none;
+            border: 1px solid #10B981;
+            color: #10B981;
+            padding: 0.4rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-rebook-ride:hover {
+            background: #10B981;
             color: white;
         }
 
@@ -261,8 +347,8 @@
             }
             .rides-table tr {
                 margin-bottom: 1.5rem;
-                background: white;
-                border: 1px solid var(--accents);
+                background: var(--white);
+                border: 1px solid var(--border-color);
                 border-radius: 16px;
                 padding: 1rem;
             }
@@ -272,7 +358,7 @@
                 justify-content: space-between;
                 align-items: center;
                 text-align: right;
-                border-bottom: 1px solid rgba(0,0,0,0.02);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             }
             .rides-table td:last-child {
                 border-bottom: none;
@@ -401,12 +487,20 @@
 
             <!-- Active Trip Tracker -->
             <div id="active-mission-container" class="hidden">
-                <div class="history-card" style="border-left: 5px solid var(--primary-red); background: #fffcfc;">
+                <div class="history-card" style="border-left: 5px solid var(--primary-red); background: var(--white);">
                     <div
                         style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
                         <h3>Active Trip Details</h3>
                         <span id="active-status" class="status-pill status-assigned">TRACKING</span>
                     </div>
+
+                    <!-- Deviation Warning Banner -->
+                    <div id="deviation-warning" style="display: none; background:#ffebee; color:#c62828; border: 1px solid #ef9a9a; padding: 1rem; border-radius: 12px; font-weight: 700; margin-bottom: 1.5rem; align-items: center; gap: 10px; animation: pulse-soft 2s infinite;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <span>ALERT: Route Deviation Detected! The driver has taken a diversion. The fare is being recalculated dynamically based on the actual path.</span>
+                    </div>
+
+                    <div id="mission-map"></div>
 
                     <div id="active-details" style=" margin-top: 1rem;">
                         <!-- Assigned dynamically -->
@@ -473,9 +567,13 @@
 
     <script>
         let isMapInitialized = false;
+        let trackerMap = null;
+        let driverMarker = null;
+        let driverLocationInterval = null;
         let lastSeenStatuses = new Map(); // id -> status
         let initialLoadDone = false;
         let currentActiveIndex = 0; // State for switching between multiple active missions
+        let loadedRides = []; // Cache loaded rides for repeating
 
         document.addEventListener('DOMContentLoaded', () => {
             const user = JSON.parse(localStorage.getItem('cityride_member'));
@@ -493,6 +591,43 @@
             setInterval(() => loadDashboardData(user), 5000);
         });
 
+        function updateDriverMarkerOnMap(lat, lng) {
+            if (!trackerMap) return;
+            if (driverMarker) {
+                driverMarker.setLatLng([lat, lng]);
+            } else {
+                const driverIcon = L.divIcon({
+                    className: 'driver-marker-wrap',
+                    html: `<div style="background:var(--primary-red); width:18px; height:18px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.3); position:relative;">
+                             <div style="position:absolute; top:-4px; left:-4px; right:-4px; bottom:-4px; border:2px solid var(--primary-red); border-radius:50%; animation:pulse 2s infinite;"></div>
+                           </div>`,
+                    iconSize: [24, 24]
+                });
+                driverMarker = L.marker([lat, lng], { icon: driverIcon }).addTo(trackerMap).bindPopup('<b>Driver Location</b>');
+            }
+            trackerMap.setView([lat, lng]);
+        }
+
+        function trackDriverLocation(bookingId) {
+            if (driverLocationInterval) clearInterval(driverLocationInterval);
+            
+            const fetchLoc = async () => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/bookings/driver-location/${bookingId}`);
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    if (data.latitude && data.longitude) {
+                        updateDriverMarkerOnMap(data.latitude, data.longitude);
+                    }
+                } catch (e) {
+                    console.error('Error fetching driver location:', e);
+                }
+            };
+            
+            fetchLoc();
+            driverLocationInterval = setInterval(fetchLoc, 5000);
+        }
+
         function showToast(title, message, type = 'info') {
             console.log(`TOAST (${type}): ${title} - ${message}`);
         }
@@ -506,6 +641,7 @@
                     throw new Error(errData.error || 'Failed to fetch bookings');
                 }
                 const rides = await res.json();
+                loadedRides = rides; // cache loaded rides
 
                 if (!Array.isArray(rides)) {
                     console.error('Expected array for rides, got:', rides);
@@ -587,6 +723,16 @@
                         }
                     }
 
+                    // Show deviation warning if is_deviated
+                    const warningDiv = document.getElementById('deviation-warning');
+                    if (warningDiv) {
+                        if (activeMission.is_deviated) {
+                            warningDiv.style.display = 'flex';
+                        } else {
+                            warningDiv.style.display = 'none';
+                        }
+                    }
+
                     let activeDriver = 'Searching for CityRide Driver...';
                     if (activeMission.driver_name) {
                         activeDriver = `
@@ -606,25 +752,125 @@
                                 <div style="font-size:0.7rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">To:</div>
                                 <div style="font-weight:700; font-size:1.1rem;">${activeMission.drop_loc}</div>
                             </div>
-                            <div style="margin-top:2rem; padding:1.5rem; background:white; border-radius:15px; border:1px solid #eee;">
+                            ${activeMission.status === 'finished' ? `
+                            <div style="margin-top:2rem; padding:1.5rem; background:rgba(52, 199, 89, 0.05); border-radius:15px; border:1px solid rgba(52, 199, 89, 0.15);">
+                                <div style="font-weight:600; color:var(--success-green); margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
+                                    <span>Final Invoice</span>
+                                    <span style="font-size:0.75rem; background:rgba(52, 199, 89, 0.1); padding:2px 8px; border-radius:5px;">ID: #B${activeMission.id}</span>
+                                </div>
+                                <div style="font-size:0.95rem; font-weight:700; margin-bottom:0.3rem;">Total Fare: <span style="color:var(--success-green)">${activeMission.fare}</span></div>
+                                <div style="font-size:0.85rem; font-weight:700; color:var(--text-muted);">Actual Distance: <span>${activeMission.actual_distance || activeMission.distance || '0 KM'}</span></div>
+                                ${activeMission.estimated_distance ? `<div style="font-size:0.75rem; color:var(--text-muted); opacity:0.7;">Estimated: ${activeMission.estimated_distance}</div>` : ''}
+                                ${activeMission.journey_end_time && activeMission.journey_start_time ? `
+                                    <div style="font-size:0.85rem; font-weight:700; color:var(--text-muted); margin-top:0.2rem;">Ride Duration: <span>${Math.ceil((new Date(activeMission.journey_end_time) - new Date(activeMission.journey_start_time)) / 60000)} Mins</span></div>
+                                ` : ''}
+                                <button class="btn" style="margin-top: 1rem; width: 100%; background: none; border: 1px solid var(--success-green); color: var(--success-green); padding: 0.6rem; font-weight: 700; border-radius: 10px;" onclick="showInvoiceModal(${JSON.stringify(activeMission).replace(/"/g, '&quot;')})">Show Invoice Details</button>
+                            </div>
+                            ` : `
+                            <div style="margin-top:2rem; padding:1.5rem; background:rgba(255, 255, 255, 0.02); border-radius:15px; border:1px solid var(--border-color);">
                                 <div style="font-weight:600; color:var(--primary-red); margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
                                     <span>Ride Details</span>
                                     <span style="font-size:0.75rem; background:rgba(183,28,28,0.1); padding:2px 8px; border-radius:5px;">ID: #B${activeMission.id}</span>
                                 </div>
-                                <div style="font-size:0.95rem; font-weight:700;">Total Distance: <span style="color:var(--primary-red)">${activeMission.distance || '0 KM'}</span></div>
-                                <div style="font-size:0.95rem; font-weight:700;">Estimated Fare: <span style="color:var(--primary-red)">${activeMission.fare}</span></div>
+                                ${activeMission.estimated_distance && activeMission.dynamic_distance ? `
+                                    <div style="font-size:0.8rem; font-weight:600; color:var(--text-muted); margin-bottom:0.3rem; text-decoration:line-through; opacity:0.6;">Estimated Distance: ${activeMission.estimated_distance}</div>
+                                    <div style="font-size:0.95rem; font-weight:700;">Live Distance: <span style="color:var(--primary-red)">${activeMission.distance || activeMission.dynamic_distance}</span></div>
+                                ` : `
+                                    <div style="font-size:0.95rem; font-weight:700;">Total Distance: <span style="color:var(--primary-red)">${activeMission.distance || '0 KM'}</span></div>
+                                `}
+                                ${activeMission.estimated_fare && activeMission.dynamic_fare ? `
+                                    <div style="font-size:0.8rem; font-weight:600; color:var(--text-muted); margin-bottom:0.3rem; text-decoration:line-through; opacity:0.6;">Estimated Fare: ${activeMission.estimated_fare}</div>
+                                    <div style="font-size:0.95rem; font-weight:700;">Dynamic Fare: <span style="color:var(--primary-red)">${activeMission.fare}</span></div>
+                                ` : `
+                                    <div style="font-size:0.95rem; font-weight:700;">Estimated Fare (Approx.): <span style="color:var(--primary-red)">${activeMission.fare}</span></div>
+                                `}
                             </div>
-                            <div style="margin-top:1.5rem; padding:1rem; background:rgba(183,28,28,0.05); border-radius:12px; border:1px dashed var(--primary-red); text-align:center;">
-                                <div style="font-size:0.65rem; text-transform:uppercase; color:var(--primary-red); font-weight:800; letter-spacing:1px; margin-bottom:5px;">Mission Verification OTP</div>
-                                <div style="font-size:1.8rem; font-weight:800; letter-spacing:8px; color:var(--dark-charcoal);">${activeMission.journey_otp || '----'}</div>
-                                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:5px;">Share this code with your captain ONLY at the end of the journey.</div>
+                            `}
+                            <div style="margin-top:1.5rem; padding:1rem; background:${activeMission.status === 'finished' ? 'rgba(52, 199, 89, 0.05)' : 'rgba(183, 28, 28, 0.05)'}; border-radius:12px; border:1px dashed ${activeMission.status === 'finished' ? '#34c759' : 'var(--primary-red)'}; text-align:center;">
+                                <div style="font-size:0.65rem; text-transform:uppercase; color:${activeMission.status === 'finished' ? '#34c759' : 'var(--primary-red)'}; font-weight:800; letter-spacing:1px; margin-bottom:5px;">${activeMission.status === 'finished' ? 'Trip Completion OTP' : 'Mission Verification OTP'}</div>
+                                <div style="font-size:1.8rem; font-weight:800; letter-spacing:8px; color:var(--text-main);">${activeMission.journey_otp || '----'}</div>
+                                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:5px;">${activeMission.status === 'finished' ? 'Provide this OTP to your captain to complete the payment and ride.' : 'Share this code with your captain ONLY at the end of the journey.'}</div>
                             </div>
                         </div>
-                        <div style="background:var(--light-grey); padding:2rem; border-radius:20px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
+                        <div style="background:rgba(255, 255, 255, 0.02); border:1px solid var(--border-color); padding:2rem; border-radius:20px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
                             <div style="font-size:0.7rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:1rem;">Your Driver</div>
                             ${activeDriver}
                         </div>
                     `;
+
+                    // MAP INITIALIZATION
+                    if (!isMapInitialized) {
+                        isMapInitialized = true;
+                        setTimeout(async () => {
+                            try {
+                                if (trackerMap) {
+                                    trackerMap.remove();
+                                }
+                                trackerMap = L.map('mission-map').setView([13.08, 80.27], 13);
+                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(trackerMap);
+
+                                const getCoords = async (addr, storedCoords) => {
+                                    if (storedCoords) return storedCoords.split(',').map(Number);
+                                    if (!addr || addr.trim() === '') return null;
+                                    try {
+                                        const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(addr)}&limit=1`);
+                                        if (!r.ok) return null;
+                                        const d = await r.json();
+                                        return d.features[0]?.geometry.coordinates;
+                                    } catch (e) { return null; }
+                                };
+
+                                const pCoords = await getCoords(activeMission.pickup_loc, activeMission.pickup_coords);
+                                const dCoords = await getCoords(activeMission.drop_loc, activeMission.drop_coords);
+
+                                if (pCoords && dCoords) {
+                                    const pMarker = L.marker([pCoords[1], pCoords[0]]).addTo(trackerMap).bindPopup(`<b>📍 Pickup:</b><br>${activeMission.pickup_loc}`);
+                                    const dMarker = L.marker([dCoords[1], dCoords[0]]).addTo(trackerMap).bindPopup(`<b>🏁 Destination:</b><br>${activeMission.drop_loc}`);
+
+                                    // Draw Route
+                                    try {
+                                        const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${pCoords[0]},${pCoords[1]};${dCoords[0]},${dCoords[1]}?overview=full&geometries=geojson`);
+                                        const routeData = await routeRes.json();
+                                        L.geoJSON(routeData.routes[0].geometry, { style: { color: "#B71C1C", weight: 5, opacity: 0.7 } }).addTo(trackerMap);
+                                    } catch (e) { }
+
+                                    const group = new L.featureGroup([pMarker, dMarker]);
+                                    trackerMap.fitBounds(group.getBounds().pad(0.2));
+                                }
+                                trackerMap.invalidateSize();
+                            } catch (e) {
+                                console.log('Map init failed:', e.message);
+                                isMapInitialized = false;
+                            }
+                        }, 500);
+                    }
+
+                    // Start/Stop driver tracking based on status
+                    if (activeMission.status === 'ongoing') {
+                        trackDriverLocation(activeMission.id);
+                    } else {
+                        if (driverLocationInterval) {
+                            clearInterval(driverLocationInterval);
+                            driverLocationInterval = null;
+                        }
+                        if (driverMarker) {
+                            driverMarker.remove();
+                            driverMarker = null;
+                        }
+                    }
+                } else {
+                    document.getElementById('active-mission-container').classList.add('hidden');
+                    isMapInitialized = false;
+                    const warningDiv = document.getElementById('deviation-warning');
+                    if (warningDiv) warningDiv.style.display = 'none';
+                    if (driverLocationInterval) {
+                        clearInterval(driverLocationInterval);
+                        driverLocationInterval = null;
+                    }
+                    if (driverMarker) {
+                        driverMarker.remove();
+                        driverMarker = null;
+                    }
                 }
 
                 rides.forEach(ride => {
@@ -662,7 +908,10 @@
                         <td data-label="Vehicle">${ride.vehicle_type.toUpperCase()}</td>
                         <td data-label="Fare" style="font-weight:700">${ride.fare}</td>
                         <td data-label="Status"><span class="status-pill status-${ride.status}">${ride.status}</span></td>
-                        <td data-label="Action">${canCancel ? `<button class="btn-cancel-ride" onclick="cancelRide(${ride.id}, ${user.id})">Cancel</button>` : '<span style="color:#ccc;font-size:0.8rem;"></span>'}</td>
+                        <td data-label="Action">
+                            ${canCancel ? `<button class="btn-cancel-ride" onclick="cancelRide(${ride.id}, ${user.id})">Cancel</button>` : ''}
+                            <button class="btn-rebook-ride" style="${canCancel ? 'margin-left: 0.5rem;' : ''}" onclick="rebookRide(${ride.id})">Repeat</button>
+                        </td>
                     `;
                     body.appendChild(row);
                 });
@@ -760,6 +1009,288 @@
             const user = JSON.parse(localStorage.getItem('cityride_member'));
             currentActiveIndex = (currentActiveIndex + delta + max) % max;
             loadDashboardData(user);
+        }
+
+        async function rebookRide(rideId) {
+            const ride = loadedRides.find(r => r.id === rideId);
+            if (!ride) {
+                alert("Ride not found.");
+                return;
+            }
+
+            const user = JSON.parse(localStorage.getItem('cityride_member'));
+            if (!user) {
+                alert("Please log in to repeat this ride.");
+                window.location.href = '/auth';
+                return;
+            }
+
+            // Check ban status first
+            try {
+                const banRes = await fetch(`${API_BASE_URL}/api/user/ban-status/${user.id}`);
+                const banData = await banRes.json();
+                if (banData.banned) {
+                    Swal.fire({
+                        title: 'Suspended',
+                        text: 'You cannot repeat this booking because your account is temporarily suspended.',
+                        icon: 'error',
+                        confirmButtonColor: '#B71C1C'
+                    });
+                    return;
+                }
+            } catch (e) {
+                console.error("Ban check failed:", e);
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+            let htmlContent = `
+                <div style="text-align: left; font-family: inherit;">
+                    <div style="background: rgba(183,28,28,0.05); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid rgba(183,28,28,0.15); font-size: 0.85rem; line-height: 1.5;">
+                        <div style="font-weight:700; color:var(--primary-red); margin-bottom: 5px; text-transform: uppercase;">Route Details</div>
+                        <div><b>From:</b> ${ride.pickup_loc}</div>
+                        <div><b>To:</b> ${ride.drop_loc}</div>
+                        <div><b>Vehicle:</b> ${ride.vehicle_type.toUpperCase()} • <b>Category:</b> ${ride.trip_type.toUpperCase()}</div>
+                        <div><b>Estimated Fare:</b> ${ride.fare}</div>
+                    </div>
+                    <p style="margin-bottom: 1rem; font-weight: 600; font-size: 0.95rem; color: var(--dark-charcoal);">Select pickup date and time for the repeated ride:</p>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.3rem; letter-spacing: 0.5px;">PICKUP DATE</label>
+                        <input type="date" id="rebook-date" class="swal2-input" min="${today}" style="margin: 0; width: 100%; box-sizing: border-box; border-radius: 8px;" required>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.3rem; letter-spacing: 0.5px;">PICKUP TIME</label>
+                        <input type="time" id="rebook-time" class="swal2-input" style="margin: 0; width: 100%; box-sizing: border-box; border-radius: 8px;" required>
+                    </div>
+            `;
+
+            if (ride.trip_type === 'round') {
+                htmlContent += `
+                    <div style="margin-bottom: 1rem;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.3rem; letter-spacing: 0.5px;">RETURN DATE (Optional)</label>
+                        <input type="date" id="rebook-return-date" class="swal2-input" min="${today}" style="margin: 0; width: 100%; box-sizing: border-box; border-radius: 8px;">
+                    </div>
+                `;
+            }
+
+            htmlContent += `</div>`;
+
+            Swal.fire({
+                title: '<span style="color:#B71C1C; font-weight:700;">Repeat Ride Booking</span>',
+                html: htmlContent,
+                showCancelButton: true,
+                confirmButtonText: 'Confirm Booking',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#B71C1C',
+                cancelButtonColor: '#aaa',
+                width: '450px',
+                focusConfirm: false,
+                preConfirm: () => {
+                    const date = document.getElementById('rebook-date').value;
+                    const time = document.getElementById('rebook-time').value;
+                    const returnDateInput = document.getElementById('rebook-return-date');
+                    const returnDate = returnDateInput ? returnDateInput.value : null;
+
+                    if (!date || !time) {
+                        Swal.showValidationMessage('Please select both date and time.');
+                        return false;
+                    }
+
+                    // Check that the selected date & time is in the future
+                    const selectedDateTime = new Date(`${date}T${time}`);
+                    if (selectedDateTime <= new Date()) {
+                        Swal.showValidationMessage('Pickup date and time must be in the future.');
+                        return false;
+                    }
+
+                    if (ride.trip_type === 'round' && returnDate) {
+                        const rDate = new Date(returnDate);
+                        const pDate = new Date(date);
+                        if (rDate < pDate) {
+                            Swal.showValidationMessage('Return date cannot be earlier than pickup date.');
+                            return false;
+                        }
+                    }
+
+                    return { date, time, returnDate };
+                }
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    const { date, time, returnDate } = result.value;
+                    
+                    const bookingData = {
+                        userId: user.id,
+                        pickup: ride.pickup_loc,
+                        pickupCoords: ride.pickup_coords,
+                        drop: ride.drop_loc,
+                        dropCoords: ride.drop_coords,
+                        date: date,
+                        time: time,
+                        passengers: parseInt(ride.passengers) || 1,
+                        vehicle: ride.vehicle_type,
+                        tripType: ride.trip_type,
+                        returnDate: returnDate,
+                        rentalPackage: ride.rental_package,
+                        fare: ride.fare,
+                        distance: ride.distance
+                    };
+
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/api/bookings/create`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(bookingData)
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            Swal.fire({
+                                title: 'Booking Confirmed!',
+                                html: `
+                                    <div style="font-family: inherit; font-size: 0.95rem; text-align: left; line-height: 1.6;">
+                                        <div style="color: #2e7d32; font-weight: 800; font-size: 1.2rem; text-align: center; margin-bottom: 1rem;">🏨 RIDE BOOKED SUCCESSFULLY!</div>
+                                        <p><b>Booking ID:</b> #B${data.bookingId}</p>
+                                        <p><b>Verification OTP:</b> <span style="font-size:1.2rem; font-weight:800; letter-spacing:2px; color:var(--primary-red);">${data.journeyOtp}</span></p>
+                                        <p style="font-size: 0.8rem; color: #666; margin-top: 10px;">Please share this OTP with your captain ONLY at the end of the journey.</p>
+                                    </div>
+                                `,
+                                icon: 'success',
+                                confirmButtonColor: '#2e7d32',
+                                confirmButtonText: 'Go to Dashboard'
+                            }).then(() => {
+                                // Reload dashboard to show the new active booking
+                                window.location.reload();
+                            });
+                        } else {
+                            const errData = await response.json();
+                            Swal.fire('Booking Failed', errData.error || 'Failed to book the ride.', 'error');
+                        }
+                    } catch (err) {
+                        Swal.fire('Error', 'A network error occurred.', 'error');
+                    }
+                }
+            });
+        }
+
+        async function showInvoiceModal(trip) {
+            const isRental = trip.trip_type === 'rental';
+            const unit = isRental ? 'Hours' : 'Mins';
+            
+            let elapsedMins = 0;
+            if (trip.journey_start_time) {
+                const startTime = new Date(trip.journey_start_time);
+                const endTime = trip.journey_end_time ? new Date(trip.journey_end_time) : new Date();
+                elapsedMins = Math.max(0, Math.floor((endTime - startTime) / 60000));
+            }
+            
+            const coveredDist = parseFloat(trip.actual_distance) || parseFloat(trip.distance) || 0;
+            const allowedMins = Math.ceil(coveredDist * 2);
+            const waitingCharge = isRental ? 0 : Math.max(0, Math.ceil((elapsedMins - allowedMins) * 2));
+            const durationText = isRental ? (elapsedMins / 60).toFixed(2) : elapsedMins.toFixed(1);
+
+            // Fetch tariff data for fare breakdown
+            let baseFare = 0, perKmRate = 0, distanceCharge = 0, subtotal = 0, gst = 0;
+            try {
+                const tariffRes = await fetch(`${API_BASE_URL}/api/tariffs`);
+                const tariffs = await tariffRes.json();
+                const vType = trip.vehicle_type || 'suv';
+                const category = trip.trip_type || 'local';
+                const match = tariffs.find(t => t.vehicle_type === vType && t.category === category);
+                if (match) {
+                    const config = typeof match.config === 'string' ? JSON.parse(match.config) : match.config;
+                    if (category === 'local') {
+                        baseFare = config.base || 0;
+                        perKmRate = config.perKm || 0;
+                        const minKm = config.minKm || 0;
+                        const chargeableKm = Math.max(0, coveredDist - minKm);
+                        distanceCharge = chargeableKm * perKmRate;
+                    } else if (category === 'oneway') {
+                        baseFare = config.base || 0;
+                        perKmRate = config.perKm || 13;
+                        const minKm = config.minKm || 130;
+                        const billableKm = Math.max(coveredDist, minKm);
+                        distanceCharge = billableKm * perKmRate;
+                    } else if (category === 'round') {
+                        baseFare = config.base || 0;
+                        perKmRate = config.perKm || 12;
+                        const minKmPerDay = config.minKmPerDay || 250;
+                        const billableKm = Math.max(coveredDist, minKmPerDay);
+                        distanceCharge = billableKm * perKmRate;
+                    }
+                    subtotal = baseFare + distanceCharge + waitingCharge;
+                    gst = Math.ceil(subtotal * 0.05);
+                }
+            } catch(e) { console.warn('Could not fetch tariff breakdown:', e); }
+
+            const fareBreakdownHtml = (perKmRate > 0) ? `
+                <div style="margin:0.8rem 0; padding:0.8rem; background:#f8f9fa; border-radius:10px; border:1px solid #e9ecef;">
+                    <div style="font-weight:700; font-size:0.85rem; color:#333; margin-bottom:0.5rem; text-transform:uppercase; letter-spacing:0.5px;">📊 Fare Breakdown</div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem; font-size:0.9rem; color:#555;">
+                        <span>Base Fare:</span>
+                        <span>₹${baseFare}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem; font-size:0.9rem; color:#555;">
+                        <span>Rate per KM:</span>
+                        <span>₹${perKmRate}/km</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem; font-size:0.9rem; color:#555;">
+                        <span>Distance Charge (${coveredDist.toFixed(1)} km):</span>
+                        <span>₹${Math.ceil(distanceCharge)}</span>
+                    </div>
+                    ${waitingCharge > 0 ? `<div style="display:flex; justify-content:space-between; margin-bottom:0.3rem; font-size:0.9rem; color:#d32f2f;">
+                        <span>Waiting Charges:</span>
+                        <span>₹${waitingCharge}</span>
+                    </div>` : ''}
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem; font-size:0.9rem; color:#555;">
+                        <span>GST (5%):</span>
+                        <span>₹${gst}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed #ccc; font-size:0.95rem; font-weight:700; color:#2e7d32;">
+                        <span>Total:</span>
+                        <span>₹${Math.ceil(subtotal + gst)}</span>
+                    </div>
+                </div>
+            ` : '';
+
+            Swal.fire({
+                title: '<span style="color:#2e7d32; font-weight:700;">Trip Invoice & Details</span>',
+                html: `
+                    <div style="text-align: left; padding: 0.5rem 0; font-family: inherit;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.8rem; font-size:1.1rem; font-weight:700; border-bottom:2px dashed #eee; padding-bottom:0.5rem;">
+                            <span>Final Fare:</span>
+                            <span style="color: #2e7d32;">${trip.fare}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.95rem; color:#555;">
+                            <span>Pickup:</span>
+                            <span style="text-align: right; font-weight:600; max-width:60%; font-size:0.85rem;">${trip.pickup_loc}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.8rem; font-size:0.95rem; color:#555; border-bottom: 1px solid #eee; padding-bottom:0.5rem;">
+                            <span>Dropoff:</span>
+                            <span style="text-align: right; font-weight:600; max-width:60%; font-size:0.85rem;">${trip.drop_loc}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:1rem; font-weight:700; color:#1565c0;">
+                            <span>🛣️ Covered Distance:</span>
+                            <span>${coveredDist.toFixed(1)} KM</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.95rem; color:#555;">
+                            <span>Ride Duration:</span>
+                            <span>${durationText} ${unit}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.95rem; color:#555;">
+                            <span>Vehicle Type:</span>
+                            <span style="text-transform:uppercase; font-weight:600;">${trip.vehicle_type || 'suv'}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.95rem; color:#555;">
+                            <span>Trip Category:</span>
+                            <span style="text-transform:uppercase; font-weight:600;">${trip.trip_type || 'local'}</span>
+                        </div>
+                        ${fareBreakdownHtml}
+                    </div>
+                `,
+                icon: 'info',
+                confirmButtonText: 'Close',
+                confirmButtonColor: '#2e7d32',
+                width: '420px'
+            });
         }
 
     </script>

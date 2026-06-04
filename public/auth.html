@@ -12,12 +12,25 @@
     <link rel="stylesheet" href="style.css">
     <script src="config.js"></script>
     <style>
+        :root {
+            --glass-bg: rgba(14, 16, 22, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --dark-charcoal: #ffffff;
+            --text-muted: #8e9297;
+            --primary-red: #B71C1C;
+            --primary-red-hover: #8E1515;
+            --white: #14161d;
+            --accents: rgba(255, 255, 255, 0.06);
+            --light-grey: #090a0f;
+            --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.8);
+        }
+
         .auth-container {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('logo.png') no-repeat center center/cover;
+            background: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('logo.png') no-repeat center center/cover;
             padding: 2rem;
         }
 
@@ -190,19 +203,33 @@
 
                 <div class="checkbox-group">
                     <input type="checkbox" id="reg-terms" required>
-                    <label for="reg-terms">i have accept the <a href='/terms' target="_blank">terms and conditions</a>.</label>
+                    <label for="reg-terms">i have accept the <a href="#" onclick="openTermsModal(event)">terms and conditions</a>.</label>
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-large">Finalize Registration</button>
             </form>
 
             <div class="auth-footer" style="text-align: left;">
-                <a href='/' class="btn-back" title="Back to Home">←</a>
+                <a href="/" class="btn-back" title="Back to Home">←</a>
             </div>
         </div>
     </div>
 
     <script>
+        function openTermsModal(event) {
+            if (event) event.preventDefault();
+            document.getElementById('terms-modal').style.display = 'flex';
+        }
+
+        function closeTermsModal() {
+            document.getElementById('terms-modal').style.display = 'none';
+        }
+
+        function acceptTermsAndClose() {
+            document.getElementById('reg-terms').checked = true;
+            closeTermsModal();
+        }
+
         function toggleDriverFields() {
             const role = document.getElementById('reg-role').value;
             const fields = document.getElementById('driver-fields');
@@ -341,6 +368,70 @@
             }
         });
     </script>
+    <!-- Terms and Conditions Modal -->
+    <div id="terms-modal" class="map-modal" style="display: none;">
+        <div class="map-modal-content" style="max-width: 650px; height: 80vh; max-height: 85vh; border-radius: 30px; background: var(--white); color: var(--dark-charcoal); display: flex; flex-direction: column;">
+            <div class="map-header" style="border-bottom: 1px solid var(--accents); padding: 1.5rem 2rem;">
+                <h3 style="font-size: 1.8rem; font-weight: 800; color: var(--dark-charcoal); margin: 0;">Terms and Conditions</h3>
+                <button class="close-map" onclick="closeTermsModal()" style="font-size: 2.5rem; background: none; border: none; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 2.5rem; overflow-y: auto; flex: 1;">
+                <p style="color: var(--text-muted); margin-bottom: 2rem; line-height: 1.8; font-size: 1rem;">Welcome to CityRideTaxi. These terms and conditions outline the rules and regulations for the use of our services.</p>
+
+                <div class="term-item" style="border-bottom: 1px solid var(--accents); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
+                    <strong style="display: block; font-size: 1.1rem; color: var(--dark-charcoal); margin-bottom: 0.5rem;">1. Acceptance of Terms</strong>
+                    <p style="color: var(--text-muted); line-height: 1.6; font-size: 0.95rem; margin: 0;">By accessing this website and using our services, you accept these terms and conditions in full. Do not continue to use CityRideTaxi's services if you do not accept all of the terms and conditions stated on this page.</p>
+                </div>
+
+                <div class="term-item" style="border-bottom: 1px solid var(--accents); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
+                    <strong style="display: block; font-size: 1.1rem; color: var(--dark-charcoal); margin-bottom: 0.5rem;">2. User Registration</strong>
+                    <p style="color: var(--text-muted); line-height: 1.6; font-size: 0.95rem; margin: 0;">During registration, you must provide accurate and complete information. You are responsible for maintaining the confidentiality of your account and password and for restricting access to your computer or mobile device.</p>
+                </div>
+
+                <div class="term-item" style="border-bottom: 1px solid var(--accents); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
+                    <strong style="display: block; font-size: 1.1rem; color: var(--dark-charcoal); margin-bottom: 0.5rem;">3. Service Usage</strong>
+                    <ul style="list-style: none; padding: 0; margin: 0;">
+                        <li style="position: relative; padding-left: 1.5rem; margin-bottom: 0.75rem; color: var(--text-muted); line-height: 1.6; font-size: 0.95rem;">
+                            <span style="position: absolute; left: 0; color: var(--primary-red); font-weight: 700;">•</span> Users must be at least 18 years of age.
+                        </li>
+                        <li style="position: relative; padding-left: 1.5rem; margin-bottom: 0.75rem; color: var(--text-muted); line-height: 1.6; font-size: 0.95rem;">
+                            <span style="position: absolute; left: 0; color: var(--primary-red); font-weight: 700;">•</span> Users must not use the service for any illegal or unauthorized purpose.
+                        </li>
+                        <li style="position: relative; padding-left: 1.5rem; margin-bottom: 0.75rem; color: var(--text-muted); line-height: 1.6; font-size: 0.95rem;">
+                            <span style="position: absolute; left: 0; color: var(--primary-red); font-weight: 700;">•</span> Users must respect the drivers and other passengers.
+                        </li>
+                        <li style="position: relative; padding-left: 1.5rem; margin-bottom: 0.75rem; color: var(--text-muted); line-height: 1.6; font-size: 0.95rem;">
+                            <span style="position: absolute; left: 0; color: var(--primary-red); font-weight: 700;">•</span> Fares are calculated based on distance, time, and vehicle type.
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="term-item" style="border-bottom: 1px solid var(--accents); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
+                    <strong style="display: block; font-size: 1.1rem; color: var(--dark-charcoal); margin-bottom: 0.5rem;">4. Cancellation Policy</strong>
+                    <p style="color: var(--text-muted); line-height: 1.6; font-size: 0.95rem; margin: 0;">Cancellations may incur a fee depending on the timing of the cancellation relative to the scheduled pickup. Please review the specific cancellation terms before booking.</p>
+                </div>
+
+                <div class="term-item" style="border-bottom: 1px solid var(--accents); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
+                    <strong style="display: block; font-size: 1.1rem; color: var(--dark-charcoal); margin-bottom: 0.5rem;">5. Limitation of Liability</strong>
+                    <p style="color: var(--text-muted); line-height: 1.6; font-size: 0.95rem; margin: 0;">CityRideTaxi shall not be liable for any indirect, incidental, special, consequential or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly.</p>
+                </div>
+
+                <div class="term-item" style="border-bottom: 1px solid var(--accents); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
+                    <strong style="display: block; font-size: 1.1rem; color: var(--dark-charcoal); margin-bottom: 0.5rem;">6. Privacy Policy</strong>
+                    <p style="color: var(--text-muted); line-height: 1.6; font-size: 0.95rem; margin: 0;">Your privacy is important to us. Please refer to our Privacy Policy section to understand how we collect, use, and safeguard your personal information.</p>
+                </div>
+
+                <div class="term-item" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+                    <strong style="display: block; font-size: 1.1rem; color: var(--dark-charcoal); margin-bottom: 0.5rem;">7. Governing Law</strong>
+                    <p style="color: var(--text-muted); line-height: 1.6; font-size: 0.95rem; margin: 0;">These terms and conditions are governed by and construed in accordance with the laws of the jurisdiction in which CityRideTaxi operates.</p>
+                </div>
+            </div>
+            <div class="map-footer" style="padding: 1.5rem 2rem; background: var(--light-grey); display: flex; justify-content: flex-end; align-items: center; border-top: 1px solid var(--accents); border-bottom-left-radius: 30px; border-bottom-right-radius: 30px;">
+                <button class="btn btn-primary" onclick="acceptTermsAndClose()" style="font-weight: 700; padding: 0.8rem 2rem; border-radius: 12px;">Accept & Close</button>
+            </div>
+        </div>
+    </div>
+
     <script src="alert.js"></script>
 </body>
 
