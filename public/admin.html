@@ -919,9 +919,12 @@
                         <div class="input-group">
                             <label style="color: rgba(255,255,255,0.7);">Vehicle Type</label>
                             <select id="d-type" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white; width: 100%; padding: 10px; border-radius: 8px;">
+                                <option value="hatchback" style="color: black;">Hatchback</option>
                                 <option value="sedan" style="color: black;">Sedan</option>
                                 <option value="suv" style="color: black;">SUV</option>
                                 <option value="bike" style="color: black;">Bike</option>
+                                <option value="8plus1" style="color: black;">Tempo Traveller (8+1)</option>
+                                <option value="van24" style="color: black;">Mini Bus / Van (24+1)</option>
                             </select>
                         </div>
                         <div style="grid-column: span 3;">
@@ -1176,6 +1179,8 @@
                             <option value="sedan">Sedan</option>
                             <option value="suv">SUV</option>
                             <option value="bike">Bike</option>
+                            <option value="8plus1">Tempo Traveller (8+1)</option>
+                            <option value="van24">Mini Bus / Van (24+1)</option>
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top: 1rem;">Update
@@ -1287,11 +1292,21 @@
                     <input type="hidden" id="pass-target-id">
                     <div class="input-group">
                         <label>New Password</label>
-                        <input type="password" id="new-password" placeholder="Enter new password" required>
+                        <div class="password-wrapper">
+                            <input type="password" id="new-password" placeholder="Enter new password" required>
+                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('new-password', this)">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
                     </div>
                     <div class="input-group" style="margin-top: 1rem;">
                         <label>Confirm Password</label>
-                        <input type="password" id="confirm-password" placeholder="Confirm new password" required>
+                        <div class="password-wrapper">
+                            <input type="password" id="confirm-password" placeholder="Confirm new password" required>
+                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('confirm-password', this)">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top: 1.5rem; background: #f39c12;">Update Password</button>
                 </form>

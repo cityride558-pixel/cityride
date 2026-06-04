@@ -209,7 +209,12 @@
                         </div>
                         <div class="input-group">
                             <label>Portal Access Password</label>
-                            <input type="password" name="password" placeholder="••••••••" required>
+                            <div class="password-wrapper">
+                                <input type="password" id="reg-password" name="password" placeholder="••••••••" required>
+                                <button type="button" class="password-toggle" onclick="togglePasswordVisibility('reg-password', this)">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -272,6 +277,8 @@
                                 <option value="sedan">Sedan (Standard)</option>
                                 <option value="suv">SUV (Premium)</option>
                                 <option value="bike">Classy Bike+</option>
+                                <option value="8plus1">Tempo Traveller (8+1)</option>
+                                <option value="van24">Mini Bus / Van (24+1)</option>
                             </select>
                         </div>
                     </div>

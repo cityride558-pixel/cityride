@@ -1996,3 +1996,38 @@ h4 {
         bottom: 80px;
     }
 }
+
+/* Password Visibility Toggle Styles */
+.password-wrapper {
+    position: relative;
+    width: 100%;
+    display: block;
+}
+.password-wrapper input {
+    padding-right: 48px !important;
+}
+.password-toggle {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    cursor: pointer;
+    color: var(--text-muted) !important;
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: opacity 0.2s ease;
+}
+.password-toggle:hover {
+    opacity: 1;
+}
+.password-toggle svg {
+    display: block;
+}
+

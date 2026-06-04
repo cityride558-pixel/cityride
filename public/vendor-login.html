@@ -71,7 +71,12 @@
             </div>
             <div class="input-group">
                 <label>Security Key</label>
-                <input type="password" id="v-pass" placeholder="••••••••" required>
+                <div class="password-wrapper">
+                    <input type="password" id="v-pass" placeholder="••••••••" required>
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('v-pass', this)">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
             </div>
             <button type="submit" class="btn-login">Verify Credentials</button>
         </form>

@@ -6,7 +6,9 @@ const VEHICLE_ICONS = {
     bike: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 17.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5z"/><path d="M18.5 17.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5z"/><path d="M10 15h4l2-4h-8z"/><path d="M12 11V7c0-1-1-2-2-2"/><path d="M8 5h4"/></svg>`,
     hatchback: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l2-6h14l2 6v5c0 .6-.4 1-1 1h-1a1 1 0 0 1-1-1v-1H5v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-5z"/><path d="M5 8V6a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2"/><circle cx="7" cy="14" r="2" fill="currentColor"/><circle cx="17" cy="14" r="2" fill="currentColor"/></svg>`,
     sedan: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2" fill="currentColor"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2" fill="currentColor"/><path d="M14 10V8m-4 2V8"/></svg>`,
-    suv: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="10" width="20" height="8" rx="1"/><path d="M4 10V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v5"/><circle cx="7" cy="18" r="2" fill="currentColor"/><circle cx="17" cy="18" r="2" fill="currentColor"/><path d="M9 18h6"/></svg>`
+    suv: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="10" width="20" height="8" rx="1"/><path d="M4 10V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v5"/><circle cx="7" cy="18" r="2" fill="currentColor"/><circle cx="17" cy="18" r="2" fill="currentColor"/><path d="M9 18h6"/></svg>`,
+    '8plus1': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="10" rx="2"/><path d="M6 8V5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v3"/><circle cx="6" cy="18" r="2" fill="currentColor"/><circle cx="18" cy="18" r="2" fill="currentColor"/><path d="M8 18h8"/><path d="M8 11h2v3H8zm4 0h2v3h-2zm4 0h2v3h-2z"/></svg>`,
+    van24: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="22" height="12" rx="2"/><path d="M4 6V4h14v2"/><circle cx="6" cy="18" r="2.5" fill="currentColor"/><circle cx="18" cy="18" r="2.5" fill="currentColor"/><path d="M8.5 18h7"/><path d="M4 9h3v4H4zm5 0h3v4H9zm5 0h3v4h-3zm5 0h2v4h-2z"/></svg>`
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -164,7 +166,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         bike: { name: 'Classy Bike Taxi', capacity: '1 Seater', maxPassengers: 1 },
                         hatchback: { name: 'Hatchback', capacity: '3+1 Seater', maxPassengers: 3 },
                         sedan: { name: 'Sedan', capacity: '4+1 Seater', maxPassengers: 4 },
-                        suv: { name: 'SUV', capacity: '6+1 Seater', maxPassengers: 6 }
+                        suv: { name: 'SUV', capacity: '6+1 Seater', maxPassengers: 6 },
+                        '8plus1': { name: 'Tempo Traveller', capacity: '8+1 Seater', maxPassengers: 8 },
+                        van24: { name: 'Mini Bus / Van', capacity: '24+1 Seater', maxPassengers: 24 }
                     };
                     transformed[t.vehicle_type] = { ...displayInfo[t.vehicle_type] };
                 }
@@ -201,6 +205,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     oneway: { base: 0, perKm: 19, minKm: 130 },
                     round: { base: 0, perKm: 18, minKmPerDay: 250 },
                     rental: { '2-20': { base: 900, extraKm: 25, extraHour: 250 }, '4-40': { base: 1600, extraKm: 25, extraHour: 250 }, '8-80': { base: 3100, extraKm: 22, extraHour: 200 }, '12-120': { base: 4200, extraKm: 20, extraHour: 200 } }
+                },
+                '8plus1': {
+                    name: 'Tempo Traveller', capacity: '8+1 Seater', maxPassengers: 8,
+                    local: { base: 600, perKm: 32, minKm: 0 },
+                    oneway: { base: 0, perKm: 22, minKm: 150 },
+                    round: { base: 0, perKm: 20, minKmPerDay: 250 },
+                    rental: { '2-20': { base: 1800, extraKm: 30, extraHour: 300 }, '4-40': { base: 3200, extraKm: 30, extraHour: 300 }, '8-80': { base: 6000, extraKm: 28, extraHour: 250 }, '12-120': { base: 8500, extraKm: 25, extraHour: 250 } }
+                },
+                van24: {
+                    name: 'Mini Bus / Van', capacity: '24+1 Seater', maxPassengers: 24,
+                    local: { base: 1500, perKm: 55, minKm: 0 },
+                    oneway: { base: 0, perKm: 42, minKm: 200 },
+                    round: { base: 0, perKm: 38, minKmPerDay: 300 },
+                    rental: { '2-20': { base: 4000, extraKm: 50, extraHour: 500 }, '4-40': { base: 7000, extraKm: 50, extraHour: 500 }, '8-80': { base: 13000, extraKm: 45, extraHour: 450 }, '12-120': { base: 18000, extraKm: 40, extraHour: 400 } }
                 }
             };
         }
@@ -322,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const baseKmFare = config.base + (extraKm * config.perKm);
                     const peakCharge = baseKmFare * peakMult;
                     
-                    const minBill = vType === 'suv' ? 300 : (vType === 'sedan' ? 200 : (vType === 'hatchback' ? 150 : 50));
+                    const minBill = vType === 'van24' ? 1500 : (vType === '8plus1' ? 800 : (vType === 'suv' ? 300 : (vType === 'sedan' ? 200 : (vType === 'hatchback' ? 150 : 50))));
                     totalFare = Math.max(minBill, baseKmFare + peakCharge) * 1.05;
 
                     displayDistance = `${distance} KM`;

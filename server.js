@@ -501,6 +501,9 @@ async function initDB() {
             )
         `);
 
+        // Alter to add speed column to gps logs if not exists
+        try { await db.query('ALTER TABLE taxi_ride_gps_logs ADD COLUMN speed DECIMAL(5, 2) DEFAULT 0.00'); } catch(e){}
+
         // Recovery: Generate OTPs for legacy rides that don't have one
         try {
             const [missing] = await db.query('SELECT id FROM taxi_bookings WHERE journey_otp IS NULL OR journey_otp = ""');
@@ -685,6 +688,56 @@ async function initDB() {
                         '8-80': { base: 1600, extraKm: 14, extraHour: 100 }, 
                         '12-120': { base: 2200, extraKm: 13, extraHour: 100 } 
                     })
+                },
+                {
+                    vehicle_type: '8plus1',
+                    category: 'local',
+                    config: JSON.stringify({ base: 600, perKm: 32, minKm: 0 })
+                },
+                {
+                    vehicle_type: '8plus1',
+                    category: 'oneway',
+                    config: JSON.stringify({ base: 0, perKm: 22, minKm: 150 })
+                },
+                {
+                    vehicle_type: '8plus1',
+                    category: 'round',
+                    config: JSON.stringify({ base: 0, perKm: 20, minKmPerDay: 250 })
+                },
+                {
+                    vehicle_type: '8plus1',
+                    category: 'rental',
+                    config: JSON.stringify({ 
+                        '2-20': { base: 1800, extraKm: 30, extraHour: 300 }, 
+                        '4-40': { base: 3200, extraKm: 30, extraHour: 300 }, 
+                        '8-80': { base: 6000, extraKm: 28, extraHour: 250 }, 
+                        '12-120': { base: 8500, extraKm: 25, extraHour: 250 } 
+                    })
+                },
+                {
+                    vehicle_type: 'van24',
+                    category: 'local',
+                    config: JSON.stringify({ base: 1500, perKm: 55, minKm: 0 })
+                },
+                {
+                    vehicle_type: 'van24',
+                    category: 'oneway',
+                    config: JSON.stringify({ base: 0, perKm: 42, minKm: 200 })
+                },
+                {
+                    vehicle_type: 'van24',
+                    category: 'round',
+                    config: JSON.stringify({ base: 0, perKm: 38, minKmPerDay: 300 })
+                },
+                {
+                    vehicle_type: 'van24',
+                    category: 'rental',
+                    config: JSON.stringify({ 
+                        '2-20': { base: 4000, extraKm: 50, extraHour: 500 }, 
+                        '4-40': { base: 7000, extraKm: 50, extraHour: 500 }, 
+                        '8-80': { base: 13000, extraKm: 45, extraHour: 450 }, 
+                        '12-120': { base: 18000, extraKm: 40, extraHour: 400 } 
+                    })
                 }
             ];
 
@@ -704,6 +757,15 @@ async function initDB() {
                     }
                     console.log('✅ Migration: Hatchback tariffs added.');
                 }
+                // Check if 8plus1 specifically are missing (Migration)
+                const [newRows] = await db.query('SELECT COUNT(*) as cnt FROM taxi_tariffs WHERE vehicle_type = "8plus1"');
+                if (newRows[0].cnt === 0) {
+                    const newTariffs = defaultTariffs.filter(t => t.vehicle_type === '8plus1' || t.vehicle_type === 'van24');
+                    for (const t of newTariffs) {
+                        await db.query('INSERT INTO taxi_tariffs (vehicle_type, category, config) VALUES (?, ?, ?)', [t.vehicle_type, t.category, t.config]);
+                    }
+                    console.log('✅ Migration: 8plus1 and van24 tariffs added to taxi_tariffs.');
+                }
             }
 
             // Also seed non-prefixed tariffs table if empty
@@ -722,6 +784,15 @@ async function initDB() {
                         await db.query('INSERT INTO tariffs (vehicle_type, category, config) VALUES (?, ?, ?)', [t.vehicle_type, t.category, t.config]);
                     }
                     console.log('✅ Migration: Hatchback tariffs (non-prefixed) added.');
+                }
+                // Check if 8plus1 specifically are missing (Migration)
+                const [newRows2] = await db.query('SELECT COUNT(*) as cnt FROM tariffs WHERE vehicle_type = "8plus1"');
+                if (newRows2[0].cnt === 0) {
+                    const newTariffs = defaultTariffs.filter(t => t.vehicle_type === '8plus1' || t.vehicle_type === 'van24');
+                    for (const t of newTariffs) {
+                        await db.query('INSERT INTO tariffs (vehicle_type, category, config) VALUES (?, ?, ?)', [t.vehicle_type, t.category, t.config]);
+                    }
+                    console.log('✅ Migration: 8plus1 and van24 tariffs (non-prefixed) added to tariffs.');
                 }
             }
             } catch (e) {
@@ -1419,6 +1490,8 @@ app.post('/api/bookings/create', async (req, res) => {
         const journeyOtp = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit OTP
         const fareStr = String(booking.fare || '₹0');
         const distStr = String(booking.distance || '0 KM');
+        const status = booking.driverId ? 'assigned' : 'pending';
+        const driverId = booking.driverId || null;
         const values = [
             booking.userId || 1,
             String(booking.pickup || ''),
@@ -1433,7 +1506,7 @@ app.post('/api/bookings/create', async (req, res) => {
             fareStr,
             distStr,
             journeyOtp,
-            'pending',
+            status,
             booking.vendorId || null,
             booking.vendorMarkup || 0,
             booking.rentalPackage || null,
@@ -1441,10 +1514,28 @@ app.post('/api/bookings/create', async (req, res) => {
             booking.passengerName || null,
             booking.passengerPhone || null,
             distStr,  // estimated_distance (static, never changes)
-            fareStr   // estimated_fare (static, never changes)
+            fareStr,  // estimated_fare (static, never changes)
+            driverId
         ];
-        const [result] = await db.query('INSERT INTO taxi_bookings (user_id, pickup_loc, pickup_coords, drop_loc, drop_coords, pickup_date, pickup_time, passengers, vehicle_type, trip_type, fare, distance, journey_otp, status, vendor_id, vendor_markup, rental_package, return_date, passenger_name, passenger_phone, estimated_distance, estimated_fare) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', values);
+        const [result] = await db.query('INSERT INTO taxi_bookings (user_id, pickup_loc, pickup_coords, drop_loc, drop_coords, pickup_date, pickup_time, passengers, vehicle_type, trip_type, fare, distance, journey_otp, status, vendor_id, vendor_markup, rental_package, return_date, passenger_name, passenger_phone, estimated_distance, estimated_fare, driver_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', values);
         res.json({ success: true, bookingId: result.insertId, journeyOtp: journeyOtp });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Search drivers by vehicle/car number
+app.get('/api/drivers/search-by-vehicle', async (req, res) => {
+    try {
+        const query = req.query.q || '';
+        if (!query) {
+            return res.json([]);
+        }
+        const [rows] = await db.query(
+            'SELECT id, name, car_model, car_number, vehicle_type, phone FROM taxi_drivers WHERE car_number LIKE ? AND approval_status = "approved" AND is_blocked = 0 LIMIT 10',
+            [`%${query}%`]
+        );
+        res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -2050,6 +2141,75 @@ function getDistance(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
+// Odometer-style distance calculator summing segments from logged coordinates
+async function calculateOdometerDistance(bookingId, startCoordsStr, fallbackEstimatedDistance) {
+    try {
+        let actualDistKm = 0;
+        let startCoords = startCoordsStr || null;
+        if (startCoords === 'null,null') {
+            startCoords = null;
+        }
+
+        // Fetch all GPS logs in chronological order
+        const [gpsLogs] = await db.query(
+            'SELECT latitude, longitude, accuracy FROM taxi_ride_gps_logs WHERE booking_id = ? ORDER BY id ASC',
+            [bookingId]
+        );
+
+        // Build list of points starting with startCoords
+        const points = [];
+        if (startCoords) {
+            const [sLng, sLat] = startCoords.split(',').map(Number);
+            if (!isNaN(sLng) && !isNaN(sLat)) {
+                points.push({ lat: sLat, lng: sLng, acc: 0 }); // start point is 100% accurate
+            }
+        }
+
+        for (const log of gpsLogs) {
+            const lat = parseFloat(log.latitude);
+            const lng = parseFloat(log.longitude);
+            const acc = parseFloat(log.accuracy) || 0;
+            if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
+                points.push({ lat, lng, acc });
+            }
+        }
+
+        // Sum consecutive segment distances
+        if (points.length > 1) {
+            let prevPoint = points[0];
+            for (let i = 1; i < points.length; i++) {
+                const currentPoint = points[i];
+                
+                // Filter out low accuracy jumps (acc > 80m is generally noisy)
+                if (currentPoint.acc > 80) {
+                    continue;
+                }
+
+                const segmentDist = getDistance(prevPoint.lat, prevPoint.lng, currentPoint.lat, currentPoint.lng);
+                
+                // Filter out stationary jitter (ignore updates < 15m)
+                if (segmentDist > 0.015) {
+                    actualDistKm += segmentDist;
+                    prevPoint = currentPoint;
+                }
+            }
+        }
+
+        // Fallback: if calculated distance is too short, return the estimated distance
+        if (actualDistKm < 0.1 && fallbackEstimatedDistance) {
+            const parsedFallback = parseFloat(String(fallbackEstimatedDistance).replace(/[^\d.]/g, '')) || 0;
+            console.log(`[Odometer #${bookingId}] Distance ${actualDistKm.toFixed(2)} KM is too short. Fallback to estimated: ${parsedFallback} KM`);
+            return parsedFallback;
+        }
+
+        console.log(`[Odometer #${bookingId}] Calculated total distance: ${actualDistKm.toFixed(2)} KM (based on ${points.length} points)`);
+        return actualDistKm;
+    } catch (err) {
+        console.error(`Error in calculateOdometerDistance for booking #${bookingId}:`, err);
+        return parseFloat(String(fallbackEstimatedDistance).replace(/[^\d.]/g, '')) || 0;
+    }
+}
+
 // Helper for Peak Multiplier matching client side
 function getPeakMultiplier(timeStr, peakRules) {
     if (!timeStr) return 0;
@@ -2130,14 +2290,19 @@ app.get('/api/driver/dashboard-stats/:driverId', async (req, res) => {
 // 5. Update Booking Status & Odometer/Timer Logic
 app.post('/api/bookings/start-journey', async (req, res) => {
     try {
-        const { bookingId, startOdometer, latitude, longitude } = req.body;
+        const { bookingId, startOdometer, latitude, longitude, otp } = req.body;
         if (!bookingId) return res.status(400).json({ error: 'Booking ID is required.' });
+        if (!otp) return res.status(400).json({ error: 'Passenger OTP is required to start the ride.' });
         
         // Fetch booking details
-        const [rows] = await db.query('SELECT fare, original_fare, pickup_coords, drop_coords, vehicle_type, trip_type, pickup_time, rental_package, return_date, pickup_date, vendor_id, vendor_markup, distance FROM taxi_bookings WHERE id = ?', [bookingId]);
+        const [rows] = await db.query('SELECT journey_otp, fare, original_fare, pickup_coords, drop_coords, vehicle_type, trip_type, pickup_time, rental_package, return_date, pickup_date, vendor_id, vendor_markup, distance FROM taxi_bookings WHERE id = ?', [bookingId]);
         if (rows.length === 0) return res.status(404).json({ error: 'Booking not found.' });
 
         const booking = rows[0];
+
+        if (String(booking.journey_otp || '').trim() !== String(otp).trim()) {
+            return res.status(400).json({ error: 'Invalid passenger OTP. Please double-check with the passenger.' });
+        }
 
         // Store original fare if not already stored
         if (!booking.original_fare) {
@@ -2399,14 +2564,23 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
                 }
             }
             
-            await db.query('UPDATE taxi_bookings SET status = "finished", end_odometer = ?, journey_end_time = NOW(), fare = ?, end_gps_coords = ? WHERE id = ?', [endOdometer, finalFareStr, endCoords, bookingId]);
+            // --- VENDOR PROFIT DEDUCTION ---
+            let vendorProfitDeducted = 0;
+            if (booking.status !== 'completed' && booking.vendor_id && parseFloat(booking.vendor_markup) > 0) {
+                vendorProfitDeducted = parseFloat(booking.vendor_markup);
+                await db.query('UPDATE taxi_drivers SET wallet_balance = wallet_balance - ? WHERE id = ?', [vendorProfitDeducted, booking.driver_id]);
+                console.log(`[FINANCE] Deducted ₹${vendorProfitDeducted} vendor profit from Driver #${booking.driver_id} for Ride #B${bookingId}`);
+            }
+
+            await db.query('UPDATE taxi_bookings SET status = "completed", end_odometer = ?, journey_end_time = NOW(), fare = ?, end_gps_coords = ? WHERE id = ?', [endOdometer, finalFareStr, endCoords, bookingId]);
             
             return res.json({ 
                 success: true, 
                 finalFare: finalFareStr, 
                 distance: distanceCovered,
                 duration: durationHrs ? durationHrs.toFixed(2) : null,
-                waitingCharge: 0
+                waitingCharge: 0,
+                vendorProfit: vendorProfitDeducted
             });
         } else {
             // For standard trips (local, oneway, round)
@@ -2416,42 +2590,8 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
             if (startCoords === 'null,null') {
                 startCoords = booking.pickup_coords || null;
             }
-            if (endCoords === 'null,null') {
-                endCoords = booking.drop_coords || null;
-            }
-            let distanceCovered = 0;
+            const distanceCovered = await calculateOdometerDistance(bookingId, startCoords, booking.estimated_distance || booking.distance || '0 KM');
 
-            // Primary: Use OSRM road routing for accurate road distance
-            if (startCoords && endCoords) {
-                try {
-                    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startCoords};${endCoords}?overview=false`;
-                    const osrmRes = await axios.get(osrmUrl, { timeout: 5000 });
-                    if (osrmRes.data && osrmRes.data.routes && osrmRes.data.routes.length > 0) {
-                        distanceCovered = osrmRes.data.routes[0].distance / 1000; // meters to km
-                        console.log(`[Finish Trip #${bookingId}] OSRM road distance: ${distanceCovered.toFixed(2)} KM (from ${startCoords} to ${endCoords})`);
-                    }
-                } catch (osrmErr) {
-                    console.warn(`[Finish Trip #${bookingId}] OSRM routing failed, falling back to Haversine:`, osrmErr.message);
-                }
-
-                // Fallback: Haversine straight-line if OSRM failed
-                if (distanceCovered < 0.1) {
-                    const [sLng, sLat] = startCoords.split(',').map(Number);
-                    const [eLng, eLat] = endCoords.split(',').map(Number);
-                    if (!isNaN(sLng) && !isNaN(sLat) && !isNaN(eLng) && !isNaN(eLat)) {
-                        distanceCovered = getDistance(sLat, sLng, eLat, eLng) * 1.3; // 30% road correction factor
-                        console.log(`[Finish Trip #${bookingId}] Haversine fallback distance (×1.3): ${distanceCovered.toFixed(2)} KM`);
-                    }
-                }
-            }
-
-            // Last resort: Use estimated distance if GPS path is empty/too short
-            if (distanceCovered < 0.1) {
-                // Prefer estimated_distance (customer-selected static), then distance
-                const fallbackDist = booking.estimated_distance || booking.distance || '0';
-                distanceCovered = parseFloat(fallbackDist.replace(/[^\d.]/g, '')) || 0;
-                console.log(`[Finish Trip #${bookingId}] Using estimated distance as final fallback: ${distanceCovered} KM`);
-            }
 
             // Calculate final time period of the ride
             const startTime = new Date(booking.journey_start_time);
@@ -2532,8 +2672,16 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
             const finalFareStr = `₹${Math.ceil(totalFare)}`;
             const distanceStr = `${distanceCovered.toFixed(1)} KM`;
 
+            // --- VENDOR PROFIT DEDUCTION ---
+            let vendorProfitDeducted = 0;
+            if (booking.status !== 'completed' && booking.vendor_id && parseFloat(booking.vendor_markup) > 0) {
+                vendorProfitDeducted = parseFloat(booking.vendor_markup);
+                await db.query('UPDATE taxi_drivers SET wallet_balance = wallet_balance - ? WHERE id = ?', [vendorProfitDeducted, booking.driver_id]);
+                console.log(`[FINANCE] Deducted ₹${vendorProfitDeducted} vendor profit from Driver #${booking.driver_id} for Ride #B${bookingId}`);
+            }
+
             await db.query(
-                'UPDATE taxi_bookings SET status = "finished", journey_end_time = NOW(), fare = ?, distance = ?, actual_distance = ?, end_gps_coords = ? WHERE id = ?',
+                'UPDATE taxi_bookings SET status = "completed", journey_end_time = NOW(), fare = ?, distance = ?, actual_distance = ?, end_gps_coords = ? WHERE id = ?',
                 [finalFareStr, distanceStr, distanceStr, endCoords, bookingId]
             );
 
@@ -2542,7 +2690,8 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
                 finalFare: finalFareStr,
                 distance: distanceCovered.toFixed(1),
                 duration: durationMins.toFixed(1),
-                waitingCharge: waitingCharge.toFixed(1)
+                waitingCharge: waitingCharge.toFixed(1),
+                vendorProfit: vendorProfitDeducted
             });
         }
     } catch (err) {
@@ -2553,15 +2702,15 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
 // GPS tracking & deviation calculations in real-time
 app.post('/api/bookings/update-gps-location', async (req, res) => {
     try {
-        const { bookingId, latitude, longitude, accuracy } = req.body;
+        const { bookingId, latitude, longitude, accuracy, speed } = req.body;
         if (!bookingId || latitude === undefined || longitude === undefined) {
             return res.status(400).json({ error: 'bookingId, latitude, and longitude are required.' });
         }
 
         // 1. Insert into logs table
         await db.query(
-            'INSERT INTO taxi_ride_gps_logs (booking_id, latitude, longitude, accuracy) VALUES (?, ?, ?, ?)',
-            [bookingId, latitude, longitude, accuracy || 0]
+            'INSERT INTO taxi_ride_gps_logs (booking_id, latitude, longitude, accuracy, speed) VALUES (?, ?, ?, ?, ?)',
+            [bookingId, latitude, longitude, accuracy || 0, speed || 0]
         );
 
         // 2. Fetch booking details
@@ -2589,18 +2738,13 @@ app.post('/api/bookings/update-gps-location', async (req, res) => {
             });
         }
 
-        // 3. Calculate actual distance traveled so far by calculating two location data (start of trip and current location)
-        let actualDistKm = 0;
+        // 3. Calculate actual distance traveled so far (odometer-style) using logged coordinates
         let startCoords = booking.start_gps_coords || booking.pickup_coords || null;
         if (startCoords === 'null,null') {
             startCoords = booking.pickup_coords || null;
         }
-        if (startCoords) {
-            const [sLng, sLat] = startCoords.split(',').map(Number);
-            if (!isNaN(sLng) && !isNaN(sLat)) {
-                actualDistKm = getDistance(sLat, sLng, latitude, longitude);
-            }
-        }
+        const actualDistKm = await calculateOdometerDistance(bookingId, startCoords, 0);
+
 
         // 4. Check for deviation from planned route
         let isDeviated = 0;
@@ -2744,14 +2888,15 @@ app.post('/api/bookings/update-gps-location', async (req, res) => {
 app.get('/api/bookings/driver-location/:bookingId', async (req, res) => {
     try {
         const { bookingId } = req.params;
-        const [rows] = await db.query('SELECT latitude, longitude, accuracy, created_at FROM taxi_ride_gps_logs WHERE booking_id = ? ORDER BY id DESC LIMIT 1', [bookingId]);
+        const [rows] = await db.query('SELECT latitude, longitude, accuracy, speed, created_at FROM taxi_ride_gps_logs WHERE booking_id = ? ORDER BY id DESC LIMIT 1', [bookingId]);
         if (rows.length === 0) {
-            return res.json({ latitude: null, longitude: null });
+            return res.json({ latitude: null, longitude: null, accuracy: null, speed: 0 });
         }
         res.json({
             latitude: parseFloat(rows[0].latitude),
             longitude: parseFloat(rows[0].longitude),
             accuracy: parseFloat(rows[0].accuracy),
+            speed: parseFloat(rows[0].speed) || 0,
             timestamp: rows[0].created_at
         });
     } catch (err) {
