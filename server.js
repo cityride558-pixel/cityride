@@ -2195,18 +2195,11 @@ async function calculateOdometerDistance(bookingId, startCoordsStr, fallbackEsti
             }
         }
 
-        // Fallback: if calculated distance is too short, return the estimated distance
-        if (actualDistKm < 0.1 && fallbackEstimatedDistance) {
-            const parsedFallback = parseFloat(String(fallbackEstimatedDistance).replace(/[^\d.]/g, '')) || 0;
-            console.log(`[Odometer #${bookingId}] Distance ${actualDistKm.toFixed(2)} KM is too short. Fallback to estimated: ${parsedFallback} KM`);
-            return parsedFallback;
-        }
-
         console.log(`[Odometer #${bookingId}] Calculated total distance: ${actualDistKm.toFixed(2)} KM (based on ${points.length} points)`);
         return actualDistKm;
     } catch (err) {
         console.error(`Error in calculateOdometerDistance for booking #${bookingId}:`, err);
-        return parseFloat(String(fallbackEstimatedDistance).replace(/[^\d.]/g, '')) || 0;
+        return 0;
     }
 }
 
@@ -2324,33 +2317,8 @@ app.post('/api/bookings/start-journey', async (req, res) => {
         }
 
         // === DYNAMIC DISTANCE CALCULATION ===
-        // Calculate the actual road distance from driver's current GPS to the drop location
+        // The ride fare is calculated only for the distance travelled. Start distance is 0.
         let dynamicDistKm = 0;
-        const dropCoords = booking.drop_coords;
-
-        if (startCoords && dropCoords && booking.trip_type !== 'rental') {
-            // Primary: Use OSRM road routing for accurate road distance
-            try {
-                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startCoords};${dropCoords}?overview=false`;
-                const osrmRes = await axios.get(osrmUrl, { timeout: 5000 });
-                if (osrmRes.data && osrmRes.data.routes && osrmRes.data.routes.length > 0) {
-                    dynamicDistKm = osrmRes.data.routes[0].distance / 1000; // meters to km
-                    console.log(`[Start Journey #${bookingId}] OSRM dynamic distance: ${dynamicDistKm.toFixed(2)} KM (from ${startCoords} to ${dropCoords})`);
-                }
-            } catch (osrmErr) {
-                console.warn(`[Start Journey #${bookingId}] OSRM routing failed, falling back to Haversine:`, osrmErr.message);
-            }
-
-            // Fallback: Haversine if OSRM failed
-            if (dynamicDistKm < 0.1) {
-                const [sLng, sLat] = startCoords.split(',').map(Number);
-                const [dLng, dLat] = dropCoords.split(',').map(Number);
-                if (!isNaN(sLng) && !isNaN(sLat) && !isNaN(dLng) && !isNaN(dLat)) {
-                    dynamicDistKm = getDistance(sLat, sLng, dLat, dLng) * 1.3; // 30% road correction
-                    console.log(`[Start Journey #${bookingId}] Haversine fallback distance (×1.3): ${dynamicDistKm.toFixed(2)} KM`);
-                }
-            }
-        }
 
         // === DYNAMIC FARE CALCULATION ===
         let dynamicFare = 0;
@@ -2376,12 +2344,10 @@ app.post('/api/bookings/start-journey', async (req, res) => {
                     dynamicFare = config.base * 1.05;
                     console.log(`[Start Journey #${bookingId}] Dynamic distance is 0 KM. Applying base fare only: ₹${Math.ceil(dynamicFare)}`);
                 } else {
-                    const minKm = config.minKm || 0;
-                    const extraKm = Math.max(0, dynamicDistKm - minKm);
-                    const baseKmFare = config.base + (extraKm * config.perKm);
+                    const distanceFare = dynamicDistKm * config.perKm;
+                    const baseKmFare = Math.max(config.base, distanceFare);
                     const peakCharge = baseKmFare * peakMult;
-                    const minBill = booking.vehicle_type === 'suv' ? 300 : (booking.vehicle_type === 'sedan' ? 200 : (booking.vehicle_type === 'hatchback' ? 150 : 50));
-                    dynamicFare = Math.max(minBill, baseKmFare + peakCharge) * 1.05;
+                    dynamicFare = (baseKmFare + peakCharge) * 1.05;
                 }
             } else if (booking.trip_type === 'oneway') {
                 const config = pricingConfig || { base: 0, perKm: 13, minKm: 130 };
@@ -2393,9 +2359,10 @@ app.post('/api/bookings/start-journey', async (req, res) => {
                 } else {
                     const minKm = config.minKm || 130;
                     const billableDist = Math.max(dynamicDistKm, minKm);
+                    const distanceFare = billableDist * (config.perKm || 13);
+                    const baseFare = Math.max(config.base || 0, distanceFare);
                     const driverAllowance = billableDist > 250 ? 600 : 400;
-                    const baseFare = config.base + (billableDist * (config.perKm || 13)) + (booking.vehicle_type === 'bike' ? 0 : driverAllowance);
-                    dynamicFare = baseFare * 1.05;
+                    dynamicFare = (baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance)) * 1.05;
                 }
             } else if (booking.trip_type === 'round') {
                 const config = pricingConfig || { base: 0, perKm: 12, minKmPerDay: 250 };
@@ -2415,8 +2382,9 @@ app.post('/api/bookings/start-journey', async (req, res) => {
                     }
                     const minKmForTrip = (config.minKmPerDay || 250) * tripDays;
                     const billableDist = Math.max(dynamicDistKm, minKmForTrip);
+                    const distanceFare = billableDist * (config.perKm || 12);
+                    const baseFare = Math.max(config.base || 0, distanceFare);
                     const driverAllowance = billableDist > 250 ? 600 : 400;
-                    const baseFare = config.base + (billableDist * (config.perKm || 12));
                     dynamicFare = ((baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance * tripDays))) * 1.05;
                 }
             }
@@ -2586,11 +2554,11 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
             // For standard trips (local, oneway, round)
             // Use stored GPS coords: start_gps_coords (captured at Start Journey press)
             //                         end_gps_coords (captured at Finish Trip press)
-            let startCoords = booking.start_gps_coords || booking.pickup_coords || null;
+            let startCoords = booking.start_gps_coords || null;
             if (startCoords === 'null,null') {
-                startCoords = booking.pickup_coords || null;
+                startCoords = null;
             }
-            const distanceCovered = await calculateOdometerDistance(bookingId, startCoords, booking.estimated_distance || booking.distance || '0 KM');
+            const distanceCovered = await calculateOdometerDistance(bookingId, startCoords);
 
 
             // Calculate final time period of the ride
@@ -2625,12 +2593,10 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
                     totalFare = (config.base + waitingCharge) * 1.05;
                     console.log(`[Finish Trip #${bookingId}] 0 KM distance. Base fare only: ₹${Math.ceil(totalFare)}`);
                 } else {
-                    const minKm = config.minKm || 0;
-                    const extraKm = Math.max(0, distanceCovered - minKm);
-                    const baseKmFare = config.base + (extraKm * config.perKm);
+                    const distanceFare = distanceCovered * config.perKm;
+                    const baseKmFare = Math.max(config.base, distanceFare);
                     const peakCharge = baseKmFare * peakMult;
-                    const minBill = booking.vehicle_type === 'suv' ? 300 : (booking.vehicle_type === 'sedan' ? 200 : (booking.vehicle_type === 'hatchback' ? 150 : 50));
-                    totalFare = (Math.max(minBill, baseKmFare + peakCharge) + waitingCharge) * 1.05;
+                    totalFare = (baseKmFare + peakCharge + waitingCharge) * 1.05;
                 }
             } else if (booking.trip_type === 'oneway') {
                 const config = pricingConfig || { base: 0, perKm: 13, minKm: 130 };
@@ -2641,9 +2607,10 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
                 } else {
                     const minKm = config.minKm || 130;
                     const billableDist = Math.max(distanceCovered, minKm);
+                    const distanceFare = billableDist * (config.perKm || 13);
+                    const baseFare = Math.max(config.base || 0, distanceFare);
                     const driverAllowance = billableDist > 250 ? 600 : 400;
-                    const baseFare = config.base + (billableDist * (config.perKm || 13)) + (booking.vehicle_type === 'bike' ? 0 : driverAllowance);
-                    totalFare = (baseFare + waitingCharge) * 1.05;
+                    totalFare = (baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance) + waitingCharge) * 1.05;
                 }
             } else if (booking.trip_type === 'round') {
                 const config = pricingConfig || { base: 0, perKm: 12, minKmPerDay: 250 };
@@ -2663,8 +2630,9 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
                     }
                     const minKmForTrip = (config.minKmPerDay || 250) * tripDays;
                     const billableDist = Math.max(distanceCovered, minKmForTrip);
+                    const distanceFare = billableDist * (config.perKm || 12);
+                    const baseFare = Math.max(config.base || 0, distanceFare);
                     const driverAllowance = billableDist > 250 ? 600 : 400;
-                    const baseFare = config.base + (billableDist * (config.perKm || 12));
                     totalFare = ((baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance * tripDays)) + waitingCharge) * 1.05;
                 }
             }
@@ -2739,53 +2707,19 @@ app.post('/api/bookings/update-gps-location', async (req, res) => {
         }
 
         // 3. Calculate actual distance traveled so far (odometer-style) using logged coordinates
-        let startCoords = booking.start_gps_coords || booking.pickup_coords || null;
+        let startCoords = booking.start_gps_coords || null;
         if (startCoords === 'null,null') {
-            startCoords = booking.pickup_coords || null;
+            startCoords = null;
         }
-        const actualDistKm = await calculateOdometerDistance(bookingId, startCoords, 0);
+        const actualDistKm = await calculateOdometerDistance(bookingId, startCoords);
 
-
-        // 4. Check for deviation from planned route
+        // 4. Check for deviation from planned route - Disabled to ignore initial location selection
         let isDeviated = 0;
-        let routeCoords = [];
-        try {
-            const routeUrl = `https://router.project-osrm.org/route/v1/driving/${booking.pickup_coords};${booking.drop_coords}?overview=full&geometries=geojson`;
-            const routeRes = await axios.get(routeUrl, { timeout: 3000 });
-            if (routeRes.data && routeRes.data.routes && routeRes.data.routes.length > 0) {
-                routeCoords = routeRes.data.routes[0].geometry.coordinates; // Array of [lng, lat]
-            }
-        } catch (e) {
-            console.warn('Could not fetch planned route from OSRM for deviation check:', e.message);
-        }
 
-        if (routeCoords.length > 0) {
-            let minDevKm = Infinity;
-            for (const coord of routeCoords) {
-                const d = getDistance(latitude, longitude, coord[1], coord[0]);
-                if (d < minDevKm) minDevKm = d;
-            }
-            if (minDevKm > 0.25) {
-                isDeviated = 1;
-            }
-        }
-
-        // 5. Calculate remaining distance to destination
+        // 5. Calculate remaining distance to destination - Disabled to base fare strictly on actual distance traveled
         let remainingDistKm = 0;
-        try {
-            const remUrl = `https://router.project-osrm.org/route/v1/driving/${longitude},${latitude};${booking.drop_coords}?overview=false`;
-            const remRes = await axios.get(remUrl, { timeout: 3000 });
-            if (remRes.data && remRes.data.routes && remRes.data.routes.length > 0) {
-                remainingDistKm = remRes.data.routes[0].distance / 1000;
-            }
-        } catch (e) {
-            if (booking.drop_coords) {
-                const [dLng, dLat] = booking.drop_coords.split(',').map(Number);
-                remainingDistKm = getDistance(latitude, longitude, dLat, dLng) * 1.2;
-            }
-        }
 
-        const totalDistance = actualDistKm + remainingDistKm;
+        const totalDistance = actualDistKm;
 
         // 5.1 Calculate elapsed time, allowed time, and waiting charge (2 min per km, excess is 2 rupees/min)
         let elapsedMins = 0;
@@ -2814,19 +2748,18 @@ app.post('/api/bookings/update-gps-location', async (req, res) => {
 
         if (booking.trip_type === 'local') {
             const config = pricingConfig || { base: 150, perKm: 20, minKm: 0 };
-            const minKm = config.minKm || 0;
-            const extraKm = Math.max(0, totalDistance - minKm);
-            const baseKmFare = config.base + (extraKm * config.perKm);
+            const distanceFare = totalDistance * config.perKm;
+            const baseKmFare = Math.max(config.base, distanceFare);
             const peakCharge = baseKmFare * peakMult;
-            const minBill = booking.vehicle_type === 'suv' ? 300 : (booking.vehicle_type === 'sedan' ? 200 : (booking.vehicle_type === 'hatchback' ? 150 : 50));
-            totalFare = (Math.max(minBill, baseKmFare + peakCharge) + waitingCharge) * 1.05;
+            totalFare = (baseKmFare + peakCharge + waitingCharge) * 1.05;
         } else if (booking.trip_type === 'oneway') {
             const config = pricingConfig || { base: 0, perKm: 13, minKm: 130 };
             const minKm = config.minKm || 130;
             const billableDist = Math.max(totalDistance, minKm);
+            const distanceFare = billableDist * (config.perKm || 13);
+            const baseFare = Math.max(config.base || 0, distanceFare);
             const driverAllowance = billableDist > 250 ? 600 : 400;
-            const baseFare = config.base + (billableDist * (config.perKm || 13)) + (booking.vehicle_type === 'bike' ? 0 : driverAllowance);
-            totalFare = (baseFare + waitingCharge) * 1.05;
+            totalFare = (baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance) + waitingCharge) * 1.05;
         } else if (booking.trip_type === 'round') {
             const config = pricingConfig || { base: 0, perKm: 12, minKmPerDay: 250 };
             let tripDays = 1;
@@ -2840,8 +2773,9 @@ app.post('/api/bookings/update-gps-location', async (req, res) => {
             }
             const minKmForTrip = (config.minKmPerDay || 250) * tripDays;
             const billableDist = Math.max(totalDistance, minKmForTrip);
+            const distanceFare = billableDist * (config.perKm || 12);
+            const baseFare = Math.max(config.base || 0, distanceFare);
             const driverAllowance = billableDist > 250 ? 600 : 400;
-            const baseFare = config.base + (billableDist * (config.perKm || 12));
             totalFare = ((baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance * tripDays)) + waitingCharge) * 1.05;
         } else if (booking.trip_type === 'rental') {
             const packageVal = booking.rental_package || '2-20';

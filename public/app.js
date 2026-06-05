@@ -336,36 +336,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (tType.id === 'local') {
                     const config = info.local;
-                    const extraKm = Math.max(0, distance - config.minKm);
-                    const baseKmFare = config.base + (extraKm * config.perKm);
+                    const distanceFare = distance * config.perKm;
+                    const baseKmFare = Math.max(config.base, distanceFare);
                     const peakCharge = baseKmFare * peakMult;
-                    
-                    const minBill = vType === 'van24' ? 1500 : (vType === '8plus1' ? 800 : (vType === 'suv' ? 300 : (vType === 'sedan' ? 200 : (vType === 'hatchback' ? 150 : 50))));
-                    totalFare = Math.max(minBill, baseKmFare + peakCharge) * 1.05;
+                    totalFare = (baseKmFare + peakCharge) * 1.05;
 
                     displayDistance = `${distance} KM`;
                     detailLabel = `Incl. 5% GST.`;
                     if (peakMult > 0) detailLabel += ` [Peak Hour +25%]`;
                 } else if (tType.id === 'oneway') {
                     const config = info.oneway;
-                    const billableDist = Math.max(distance, 130);
+                    const minKm = config.minKm || 130;
+                    const billableDist = Math.max(distance, minKm);
+                    const distanceFare = billableDist * config.perKm;
+                    const baseFare = Math.max(config.base || 0, distanceFare);
                     const driverAllowance = billableDist > 250 ? 600 : 400;
-                    const baseFare = (billableDist * config.perKm) + (vType === 'bike' ? 0 : driverAllowance);
-                    totalFare = baseFare * 1.05; // Incl 5% GST
+                    totalFare = (baseFare + (vType === 'bike' ? 0 : driverAllowance)) * 1.05; // Incl 5% GST
                     displayDistance = `${distance} KM`;
                     detailLabel = `Incl. Allowance & 5% GST.`;
-                    if (distance < 130) detailLabel += ` [130KM Min Applied]`;
+                    if (distance < minKm) detailLabel += ` [${minKm}KM Min Applied]`;
                 } else if (tType.id === 'round') {
                     const config = info.round;
-                    const minKmForTrip = Math.max(250, config.minKmForTrip || 250);
+                    const minKmForTrip = config.minKmPerDay || 250;
                     const actualTwoWayDist = distance * 2;
-                    const billableDist = Math.max(actualTwoWayDist, minKmForTrip);
+                    const billableDist = Math.max(actualTwoWayDist, minKmForTrip * tripDays);
+                    const distanceFare = billableDist * config.perKm;
+                    const baseFare = Math.max(config.base || 0, distanceFare);
                     const driverAllowance = billableDist > 250 ? 600 : 400;
-                    const baseFare = (billableDist * config.perKm);
                     totalFare = (baseFare + (vType === 'bike' ? 0 : driverAllowance * tripDays)) * 1.05; // Incl 5% GST
                     displayDistance = `${distance} x 2 (${billableDist} KM Billable)`;
                     detailLabel = `${tripDays} Day(s) • Incl. Allowance & 5% GST.`;
-                    if (actualTwoWayDist < 250) detailLabel += ` [250KM Min Applied]`;
+                    if (actualTwoWayDist < minKmForTrip * tripDays) detailLabel += ` [${minKmForTrip * tripDays}KM Min Applied]`;
                 } else if (tType.id === 'rental') {
                     if (!info.rental) return;
                     const packageVal = rentalPackageSelect ? rentalPackageSelect.value : '2-20';

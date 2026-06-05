@@ -2297,6 +2297,12 @@
 
             activePingId = job.id;
             
+            if (job.vendor_id) {
+                document.querySelector('#incoming-ping-screen .ping-subtitle').textContent = 'Incoming Vendor Request';
+            } else {
+                document.querySelector('#incoming-ping-screen .ping-subtitle').textContent = 'Incoming Ride Request';
+            }
+            
             document.getElementById('ping-vehicle-type').textContent = (job.vehicle_type || 'SEDAN').toUpperCase();
             document.getElementById('ping-fare-val').textContent = job.fare;
             document.getElementById('ping-dist-val').textContent = job.distance;
@@ -2556,7 +2562,11 @@
                 }
             }
 
-            document.getElementById('active-ride-id').textContent = `ID: #B${ride.id}`;
+            if (ride.vendor_id) {
+                document.getElementById('active-ride-id').innerHTML = `ID: #B${ride.id} <span style="background: rgba(52, 199, 89, 0.15); color: var(--success-green); padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 8px; font-size: 0.65rem; text-transform: uppercase;">Vendor Booking</span>`;
+            } else {
+                document.getElementById('active-ride-id').textContent = `ID: #B${ride.id}`;
+            }
             document.getElementById('active-passenger-name').textContent = ride.customer_name || 'Passenger';
             document.getElementById('active-fare-val').textContent = ride.fare;
             document.getElementById('active-dist-val').textContent = ride.distance || '0 KM';
@@ -2792,7 +2802,7 @@
                 if (res.ok) {
                     const data = await res.json();
                     
-                    Swal.fire({
+                    await Swal.fire({
                         title: 'Invoice Calculated',
                         html: `
                             <div style="text-align:left; font-size:0.85rem; display:flex; flex-direction:column; gap:6px;">
@@ -2827,6 +2837,42 @@
                         icon: 'success',
                         ...swalDarkOpts
                     });
+
+                    if (data.vendorProfit > 0) {
+                        const totalFareVal = parseFloat(data.finalFare.replace(/[^0-9.]/g, '')) || 0;
+                        const originalFare = totalFareVal;
+                        const vendorProfit = parseFloat(data.vendorProfit) || 0;
+                        const netEarnings = originalFare - vendorProfit;
+
+                        await Swal.fire({
+                            title: 'Vendor Booking Notice',
+                            html: `
+                                <div style="text-align: left; font-size: 0.9rem; line-height: 1.6;">
+                                    <div style="background: rgba(10, 132, 255, 0.1); border: 1px solid var(--info-blue); padding: 12px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; color: var(--info-blue); text-align: center;">
+                                        💼 Vendor Dispatch Ride Summary
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; margin-bottom: 8px;">
+                                        <span>Original Ride Fare:</span>
+                                        <span style="font-weight: 700; color: var(--text-white);">₹${originalFare.toFixed(2)}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; margin-bottom: 8px; color: var(--danger-red);">
+                                        <span>Vendor Profit Share:</span>
+                                        <span style="font-weight: 700;">₹${vendorProfit.toFixed(2)}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; margin-bottom: 15px;">
+                                        <span>Your Net Earnings:</span>
+                                        <span style="color: var(--success-green);">₹${netEarnings.toFixed(2)}</span>
+                                    </div>
+                                    <div style="background: rgba(220, 20, 60, 0.12); border: 1px solid var(--primary-red); padding: 12px; border-radius: 8px; color: #ff6b6b; font-size: 0.82rem; font-weight: bold; text-align: center;">
+                                        ⚠️ Wallet Deduction: The vendor profit amount of ₹${vendorProfit.toFixed(2)} has been successfully deducted from your wallet balance.
+                                    </div>
+                                </div>
+                            `,
+                            icon: 'info',
+                            confirmButtonText: 'Acknowledge',
+                            ...swalDarkOpts
+                        });
+                    }
 
                     pollOpportunityJobs();
                 } else {
@@ -2896,6 +2942,42 @@
                         icon: 'success',
                         ...swalDarkOpts
                     });
+
+                    if (data.vendorProfit > 0) {
+                        const totalFareVal = parseFloat(data.totalFare.replace(/[^0-9.]/g, '')) || 0;
+                        const originalFare = totalFareVal;
+                        const vendorProfit = parseFloat(data.vendorProfit) || 0;
+                        const netEarnings = originalFare - vendorProfit;
+
+                        await Swal.fire({
+                            title: 'Vendor Booking Notice',
+                            html: `
+                                <div style="text-align: left; font-size: 0.9rem; line-height: 1.6;">
+                                    <div style="background: rgba(10, 132, 255, 0.1); border: 1px solid var(--info-blue); padding: 12px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; color: var(--info-blue); text-align: center;">
+                                        💼 Vendor Dispatch Ride Summary
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; margin-bottom: 8px;">
+                                        <span>Original Ride Fare:</span>
+                                        <span style="font-weight: 700; color: var(--text-white);">₹${originalFare.toFixed(2)}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; margin-bottom: 8px; color: var(--danger-red);">
+                                        <span>Vendor Profit Share:</span>
+                                        <span style="font-weight: 700;">₹${vendorProfit.toFixed(2)}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; margin-bottom: 15px;">
+                                        <span>Your Net Earnings:</span>
+                                        <span style="color: var(--success-green);">₹${netEarnings.toFixed(2)}</span>
+                                    </div>
+                                    <div style="background: rgba(220, 20, 60, 0.12); border: 1px solid var(--primary-red); padding: 12px; border-radius: 8px; color: #ff6b6b; font-size: 0.82rem; font-weight: bold; text-align: center;">
+                                        ⚠️ Wallet Deduction: The vendor profit amount of ₹${vendorProfit.toFixed(2)} has been successfully deducted from your wallet balance.
+                                    </div>
+                                </div>
+                            `,
+                            icon: 'info',
+                            confirmButtonText: 'Acknowledge',
+                            ...swalDarkOpts
+                        });
+                    }
 
                     await syncDashboardStats();
                     pollOpportunityJobs();
@@ -3077,7 +3159,7 @@
                     return `
                         <div class="history-card">
                             <div class="history-header">
-                                <span class="history-id">Booking #B${ride.id}</span>
+                                <span class="history-id">Booking #B${ride.id} ${ride.vendor_id ? `<span style="background: rgba(52, 199, 89, 0.15); color: var(--success-green); padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; margin-left: 6px;">VENDOR</span>` : ''}</span>
                                 <span class="history-status ${statusClass}">${statusLabel}</span>
                             </div>
                             <div class="history-datetime">
