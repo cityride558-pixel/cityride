@@ -249,25 +249,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (data.routes && data.routes.length > 0) {
                     const distanceInKm = Math.ceil(data.routes[0].distance / 1000);
-                    
-
-
-                    renderVehicleOptions(distanceInKm);
+                    const durationInMins = data.routes[0].duration ? Math.ceil(data.routes[0].duration / 60) : Math.ceil(distanceInKm * 1.5);
+                    renderVehicleOptions(distanceInKm, durationInMins);
                 }
             } catch (err) {
                 console.error('Distance calculation error:', err);
-                renderVehicleOptions(15);
+                renderVehicleOptions(15, 25);
             }
         } else if (currentCategory === 'rental' && pickupCoords) {
             // Rentals don't strictly need a destination for the base package price
-            renderVehicleOptions(0);
+            renderVehicleOptions(0, 0);
         } else {
             document.getElementById('vehicle-selection-container').innerHTML = '';
             fareEstimate.classList.add('hidden');
         }
     }
 
-    function renderVehicleOptions(distance) {
+    function renderVehicleOptions(distance, duration = 0) {
         const passengers = parseInt(passengerInput.value) || 1;
         const container = document.getElementById('vehicle-selection-container');
         container.innerHTML = '';
@@ -383,6 +381,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalFare = Math.ceil(totalFare);
                 const isDisabled = passengers > info.maxPassengers;
 
+                let etaText = 'Choose';
+                if (duration > 0) {
+                    if (duration >= 60) {
+                        const hrs = Math.floor(duration / 60);
+                        const mins = duration % 60;
+                        etaText = mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+                    } else {
+                        etaText = `${duration}m`;
+                    }
+                } else if (tType.id === 'rental') {
+                    const packageVal = rentalPackageSelect ? rentalPackageSelect.value : '2-20';
+                    const [pMaxHrs] = packageVal.split('-').map(Number);
+                    etaText = `${pMaxHrs}h package`;
+                }
+
                 const card = document.createElement('div');
                 card.className = `vehicle-card-item ${isDisabled ? 'vehicle-disabled' : ''}`;
                 card.innerHTML = `
@@ -396,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="vehicle-price-wrap">
                         <div class="vehicle-price">₹${totalFare} <span style="font-size:0.65rem; font-weight:normal; color:#888;">Approx.</span></div>
-                        <div class="vehicle-eta">Choose</div>
+                        <div class="vehicle-eta">🕒 ${etaText}</div>
                     </div>
                 `;
 
@@ -410,6 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         vehicleSelect.value = vType;
                         fareVal.textContent = `₹${totalFare} (Approx.)`;
                         distanceVal.textContent = displayDistance;
+                        window.selectedDuration = (duration > 0 || tType.id === 'rental') ? etaText : null;
 
                         // Toggle related inputs for better UX
                         if (tType.id === 'round') {
@@ -651,6 +665,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="font-weight: 800; color: var(--primary-red); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 1px; font-size: 1.1rem;">📋 Booking Summary</div>
                     <div style="margin-bottom: 1.2rem; padding-bottom: 1.2rem; border-bottom: 1px dashed rgba(220, 20, 60, 0.2); font-size: 1.05rem;">
                         <div><b>Estimated Fare (Approx.):</b> <span style="color: var(--primary-red); font-weight: 800; font-size: 1.2rem;">${pendingBookingData.fare}</span></div>
+                        <div><b>Distance:</b> <span>${pendingBookingData.distance}</span></div>
+                        ${pendingBookingData.estimatedDuration ? `<div><b>Estimated Duration:</b> <span>🕒 ${pendingBookingData.estimatedDuration}</span></div>` : ''}
                         <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">* The amount is an approximate calculation. Tolls, state permits, parking charges, and route deviation adjustments based on actual path or time taken will be updated dynamically during the trip.</div>
                     </div>
                     <div style="font-weight: 800; color: var(--primary-red); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9rem;">📋 Important Policies</div>
@@ -745,7 +761,8 @@ document.addEventListener('DOMContentLoaded', () => {
             returnDate: currentTripType === 'round' ? document.getElementById('return-date').value : null,
             rentalPackage: currentTripType === 'rental' ? document.getElementById('rental-package').value : null,
             fare: fareVal.textContent,
-            distance: distanceVal.textContent.trim()
+            distance: distanceVal.textContent.trim(),
+            estimatedDuration: window.selectedDuration || null
         };
 
         console.log('🚀 Finalizing CityRide Booking Payload:', pendingBookingData);

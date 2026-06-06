@@ -879,7 +879,7 @@
                 </div>
 
                 <!-- Live Interactive Route Map on the right -->
-                <div class="booking-card" style="padding: 0; position: relative; height: 750px; overflow: hidden; border: 1px solid var(--card-border); sticky; top: 20px;">
+                <div class="booking-card" style="padding: 0; position: sticky; height: 750px; overflow: hidden; border: 1px solid var(--card-border); top: 20px;">
                     <div id="live-route-map" style="width: 100%; height: 100%;"></div>
                 </div>
             </div>
@@ -1266,6 +1266,7 @@
                     
                     if (systemPricing[vType]) {
                         systemPricing[vType][cat] = config;
+                        pricing[vType][cat] = JSON.parse(JSON.stringify(config));
                     }
                 });
 
@@ -1411,7 +1412,8 @@
                     
                     baseFare = baseKmFare + peakCharge;
                 } else if (tType === 'oneway') {
-                    const billableKm = Math.max(currentDistance, config.minKm || 130);
+                    const minKm = typeof config.minKm === 'number' ? config.minKm : 130;
+                    const billableKm = Math.max(currentDistance, minKm);
                     let driverAllowance = 0;
                     if (vType === 'hatchback' || vType === 'sedan') {
                         driverAllowance = billableKm > 250 ? 600 : 400;
@@ -1426,7 +1428,7 @@
                     const baseKmFare = Math.max(config.base || 0, distanceFare);
                     baseFare = baseKmFare + (vType === 'bike' ? 0 : driverAllowance);
                 } else if (tType === 'round') {
-                    const minKmPerDay = config.minKmPerDay || 250;
+                    const minKmPerDay = typeof config.minKmPerDay === 'number' ? config.minKmPerDay : 250;
                     const billableKm = Math.max(currentDistance * 2, minKmPerDay * tripDays);
                     let driverAllowance = 0;
                     if (vType === 'hatchback' || vType === 'sedan') {

@@ -1506,6 +1506,10 @@
                                     <span style="font-size:0.65rem; font-weight:800; color:var(--primary-red); text-transform:uppercase; background:rgba(183, 28, 28, 0.15); padding:2px 6px; border-radius:4px; margin-bottom:0.3rem; display:inline-block;">${(b.trip_type === 'round' ? 'Round Trip' : (b.trip_type === 'rental' ? 'Local Rental' : (b.trip_type || 'One Way').replace('_', ' ')))}</span><br>
                                     <strong>${b.pickup_loc}</strong><br>
                                     <span style="font-size:0.8rem; color:var(--text-muted)">${b.drop_loc}</span><br>
+                                    <div style="font-size:0.75rem; color:#666; margin-top:4px;">
+                                        <b>Distance:</b> ${b.distance || '0 KM'}
+                                        ${b.estimated_duration ? ` | <b>Duration:</b> 🕒 ${b.estimated_duration}` : ''}
+                                    </div>
                                     ${b.trip_type === 'rental' && b.start_odometer ? `
                                         <div style="margin-top:0.5rem; font-size:0.75rem; background:rgba(255, 159, 10, 0.05); padding:8px; border-radius:8px; border:1px solid rgba(255, 159, 10, 0.15);">
                                             <div style="font-weight:800; color:var(--warning-amber); font-size:0.65rem; text-transform:uppercase; margin-bottom:4px;">Rental Audit</div>

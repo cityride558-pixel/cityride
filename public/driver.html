@@ -1611,7 +1611,6 @@
                             <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-gray); text-transform: uppercase;">Total Balance</span>
                             <div class="wallet-bal-num"><span>₹</span><span id="wallet-balance-lbl">0.00</span></div>
                         </div>
-                        <button class="payout-btn" onclick="triggerPayoutRequest()">Withdraw</button>
                     </div>
                     <div class="offline-notice-banner" style="background: rgba(183, 28, 28, 0.04); border-color: rgba(183, 28, 28, 0.15); color: var(--text-white);">
                         <i class="ph-bold ph-shield-check" style="color:var(--accent-brand); font-size:1.1rem;"></i>
@@ -1716,9 +1715,13 @@
                         <span class="ping-metric-label">Estimated Fare</span>
                         <span class="ping-metric-val fare" id="ping-fare-val">₹0</span>
                     </div>
-                    <div class="ping-metric" style="text-align: right;">
+                    <div class="ping-metric" style="text-align: center;">
                         <span class="ping-metric-label">Distance</span>
                         <span class="ping-metric-val" id="ping-dist-val">0 KM</span>
+                    </div>
+                    <div class="ping-metric" style="text-align: right;">
+                        <span class="ping-metric-label">Est. Duration</span>
+                        <span class="ping-metric-val" id="ping-duration-val">-</span>
                     </div>
                 </div>
 
@@ -2240,7 +2243,7 @@
                         <div style="color:var(--text-gray); margin-top:2px;">🏁 ${job.drop_loc}</div>
                     </div>
                     <div class="opp-card-row" style="margin-top:6px; border-top:1px solid rgba(255,255,255,0.04); padding-top:10px;">
-                        <span class="opp-dist">Distance: ${job.distance}</span>
+                        <span class="opp-dist">Distance: ${job.distance} ${job.estimated_duration ? ` | 🕒 ${job.estimated_duration}` : ''}</span>
                         <button class="payout-btn" style="padding:6px 12px; font-size:0.75rem;" onclick="acceptBookingPing(${job.id})">Accept Ride</button>
                     </div>
                 </div>
@@ -2306,6 +2309,7 @@
             document.getElementById('ping-vehicle-type').textContent = (job.vehicle_type || 'SEDAN').toUpperCase();
             document.getElementById('ping-fare-val').textContent = job.fare;
             document.getElementById('ping-dist-val').textContent = job.distance;
+            document.getElementById('ping-duration-val').textContent = job.estimated_duration ? job.estimated_duration : 'N/A';
             document.getElementById('ping-pickup-loc').textContent = job.pickup_loc;
             document.getElementById('ping-drop-loc').textContent = job.drop_loc;
             document.getElementById('ping-passenger-name').textContent = job.customer_name || 'Passenger';
@@ -2456,14 +2460,34 @@
 
         // === LIVE WAITING CHARGE TIMER SYSTEM ===
         function startWaitingTimer(ride) {
+            stopPreRideWaitingTimer();
             // Don't restart if already running for the same ride
             if (waitingTimerInterval) return;
 
-            const journeyStartTime = ride.journey_start_time ? new Date(ride.journey_start_time) : new Date();
-            // Parse distance: dynamic_distance (e.g. '12.5 KM') or distance field
-            const distStr = ride.dynamic_distance || ride.distance || '0';
-            const distanceKm = parseFloat(String(distStr).replace(/[^\d.]/g, '')) || 0;
-            const allowedMins = distanceKm * 2; // 2 minutes per km
+            // Initialize elapsed seconds (prefer DB calculated difference, fallback to client date parsing)
+            let baseElapsedSecs = 0;
+            if (typeof ride.journey_elapsed_seconds === 'number') {
+                baseElapsedSecs = ride.journey_elapsed_seconds;
+            } else if (ride.journey_start_time) {
+                const parsed = new Date(ride.journey_start_time);
+                if (!isNaN(parsed.getTime())) {
+                    baseElapsedSecs = Math.max(0, Math.floor((new Date() - parsed) / 1000));
+                }
+            }
+
+            let currentElapsedSecs = baseElapsedSecs;
+
+            // Parse distance from customer's pickup and drop location (estimated/booked distance)
+            let allowedMins = 0;
+            if (ride.trip_type === 'rental') {
+                const packageVal = ride.rental_package || '2-20';
+                const [pMaxHrs] = packageVal.split('-').map(Number);
+                allowedMins = pMaxHrs * 60;
+            } else {
+                const distStr = ride.estimated_distance || ride.distance || '0';
+                const distanceKm = parseFloat(String(distStr).replace(/[^\d.]/g, '')) || 0;
+                allowedMins = distanceKm * 2; // 2 minutes per km
+            }
 
             // Show the timer panel
             document.getElementById('waiting-timer-panel').classList.remove('hidden');
@@ -2474,9 +2498,7 @@
             document.getElementById('timer-allowed-time').textContent = allowedH > 0 ? `${allowedH}h ${allowedM}m` : `${allowedM}m`;
 
             function updateTimer() {
-                const now = new Date();
-                const elapsedMs = now - journeyStartTime;
-                const elapsedSecs = Math.max(0, Math.floor(elapsedMs / 1000));
+                const elapsedSecs = currentElapsedSecs;
                 const elapsedMins = elapsedSecs / 60;
 
                 // Format elapsed as HH:MM:SS
@@ -2527,6 +2549,9 @@
                     }
                     elapsedDisplay.style.color = 'var(--text-white)';
                 }
+
+                // Increment elapsed seconds for next tick
+                currentElapsedSecs++;
             }
 
             // Run immediately, then every second
@@ -2534,11 +2559,117 @@
             waitingTimerInterval = setInterval(updateTimer, 1000);
         }
 
+        let preRideTimerInterval = null;
+        function startPreRideWaitingTimer(ride) {
+            if (preRideTimerInterval) return;
+
+            let baseElapsedSecs = 0;
+            if (typeof ride.reached_elapsed_seconds === 'number') {
+                baseElapsedSecs = ride.reached_elapsed_seconds;
+            } else if (ride.reached_pickup_time) {
+                const parsed = new Date(ride.reached_pickup_time);
+                if (!isNaN(parsed.getTime())) {
+                    baseElapsedSecs = Math.max(0, Math.floor((new Date() - parsed) / 1000));
+                }
+            }
+
+            let currentElapsedSecs = baseElapsedSecs;
+            const allowedSecs = 300; // 5 minutes grace time
+
+            // Show the timer panel
+            const panel = document.getElementById('waiting-timer-panel');
+            if (panel) panel.classList.remove('hidden');
+
+            // Set title and details
+            const titleEl = panel.querySelector('span');
+            if (titleEl) titleEl.textContent = "Pre-ride Grace / Waiting Timer";
+
+            // Hide other detailed lines or update them
+            const allowedTimeEl = document.getElementById('timer-allowed-time');
+            if (allowedTimeEl) allowedTimeEl.textContent = "5m 00s";
+
+            function updateTimer() {
+                const elapsedSecs = currentElapsedSecs;
+                
+                const badge = document.getElementById('timer-status-badge');
+                const bar = document.getElementById('timer-progress-bar');
+                const elapsedDisplay = document.getElementById('timer-elapsed-display');
+                const waitingTimeEl = document.getElementById('timer-waiting-time');
+                const waitingChargeEl = document.getElementById('timer-waiting-charge');
+                const activeWaitingChargeEl = document.getElementById('active-waiting-charge');
+
+                if (elapsedSecs <= allowedSecs) {
+                    // Still in grace period
+                    const remainingSecs = allowedSecs - elapsedSecs;
+                    const rM = Math.floor(remainingSecs / 60);
+                    const rS = remainingSecs % 60;
+                    
+                    if (elapsedDisplay) {
+                        elapsedDisplay.textContent = `00:${String(rM).padStart(2,'0')}:${String(rS).padStart(2,'0')}`;
+                        elapsedDisplay.style.color = 'var(--warning-amber)';
+                    }
+                    if (badge) {
+                        badge.textContent = 'GRACE PERIOD';
+                        badge.style.background = 'rgba(255, 159, 10, 0.15)';
+                        badge.style.color = 'var(--warning-amber)';
+                    }
+                    if (bar) {
+                        bar.style.background = 'var(--warning-amber)';
+                        const pct = Math.min(100, (elapsedSecs / allowedSecs) * 100);
+                        bar.style.width = `${pct}%`;
+                    }
+                    if (waitingTimeEl) waitingTimeEl.textContent = "0:00";
+                    if (waitingChargeEl) waitingChargeEl.textContent = "₹0";
+                    if (activeWaitingChargeEl) activeWaitingChargeEl.textContent = "₹0";
+                } else {
+                    // Grace period exceeded, charging waiting fees!
+                    const waitingSecs = elapsedSecs - allowedSecs;
+                    const wM = Math.floor(waitingSecs / 60);
+                    const wS = waitingSecs % 60;
+                    
+                    const waitingMinsFloat = waitingSecs / 60;
+                    const waitingCharge = Math.ceil(waitingMinsFloat * 2); // ₹2 per minute
+
+                    if (elapsedDisplay) {
+                        const totalM = Math.floor(elapsedSecs / 60);
+                        const totalS = elapsedSecs % 60;
+                        elapsedDisplay.textContent = `00:${String(totalM).padStart(2,'0')}:${String(totalS).padStart(2,'0')}`;
+                        elapsedDisplay.style.color = 'var(--danger-red)';
+                    }
+                    if (badge) {
+                        badge.textContent = 'WAITING CHARGES';
+                        badge.style.background = 'rgba(255, 59, 48, 0.15)';
+                        badge.style.color = 'var(--danger-red)';
+                    }
+                    if (bar) {
+                        bar.style.background = 'var(--danger-red)';
+                        bar.style.width = '100%';
+                    }
+                    if (waitingTimeEl) waitingTimeEl.textContent = `${wM}:${String(wS).padStart(2,'0')}`;
+                    if (waitingChargeEl) waitingChargeEl.textContent = `₹${waitingCharge}`;
+                    if (activeWaitingChargeEl) activeWaitingChargeEl.textContent = `₹${waitingCharge}`;
+                }
+
+                currentElapsedSecs++;
+            }
+
+            updateTimer();
+            preRideTimerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function stopPreRideWaitingTimer() {
+            if (preRideTimerInterval) {
+                clearInterval(preRideTimerInterval);
+                preRideTimerInterval = null;
+            }
+        }
+
         function stopWaitingTimer() {
             if (waitingTimerInterval) {
                 clearInterval(waitingTimerInterval);
                 waitingTimerInterval = null;
             }
+            stopPreRideWaitingTimer();
             const panel = document.getElementById('waiting-timer-panel');
             if (panel) panel.classList.add('hidden');
         }
@@ -2569,7 +2700,13 @@
             }
             document.getElementById('active-passenger-name').textContent = ride.customer_name || 'Passenger';
             document.getElementById('active-fare-val').textContent = ride.fare;
-            document.getElementById('active-dist-val').textContent = ride.distance || '0 KM';
+            let durationVal = ride.estimated_duration || '';
+            if (['null', 'undefined', 'nan', 'invalid'].includes(String(durationVal).toLowerCase().trim())) {
+                durationVal = '';
+            }
+            window.activeRideDuration = durationVal;
+            const tripDist = ride.estimated_distance || ride.distance || '0 KM';
+            document.getElementById('active-dist-val').textContent = tripDist + (window.activeRideDuration ? ` (${window.activeRideDuration})` : '');
             document.getElementById('active-actual-dist').textContent = ride.actual_distance || '0.0 KM';
             document.getElementById('active-pickup-loc').textContent = ride.pickup_loc;
             document.getElementById('active-drop-loc').textContent = ride.drop_loc;
@@ -2587,15 +2724,28 @@
             drawTripRouteOnMap(ride.pickup_loc, ride.drop_loc, ride.pickup_coords, ride.drop_coords);
 
             if (ride.status === 'assigned') {
-                badge.textContent = 'En Route to Pickup';
-                badge.style.background = 'rgba(183, 28, 28, 0.1)';
-                badge.style.color = 'var(--accent-brand)';
-                stopWaitingTimer();
-                
-                btnsArea.innerHTML = `
-                    <button class="btn btn-primary" onclick="initiateStartJourney(${ride.id}, '${ride.trip_type}')">Start Journey</button>
-                    <button class="btn btn-secondary" style="color:var(--danger-red); border-color:rgba(255,59,48,0.2);" onclick="abortAssignedMission(${ride.id})">Cancel Assignment</button>
-                `;
+                if (!ride.reached_pickup_time) {
+                    badge.textContent = 'En Route to Pickup';
+                    badge.style.background = 'rgba(183, 28, 28, 0.1)';
+                    badge.style.color = 'var(--accent-brand)';
+                    stopWaitingTimer();
+                    
+                    btnsArea.innerHTML = `
+                        <button class="btn btn-primary" onclick="markReachedLocation(${ride.id})">Reached Location</button>
+                        <button class="btn btn-secondary" style="color:var(--danger-red); border-color:rgba(255,59,48,0.2);" onclick="abortAssignedMission(${ride.id})">Cancel Assignment</button>
+                    `;
+                } else {
+                    badge.textContent = 'Arrived at Pickup';
+                    badge.style.background = 'rgba(52, 199, 89, 0.1)';
+                    badge.style.color = 'var(--success-green)';
+                    
+                    startPreRideWaitingTimer(ride);
+
+                    btnsArea.innerHTML = `
+                        <button class="btn btn-primary" onclick="initiateStartJourney(${ride.id}, '${ride.trip_type}')">Start Journey</button>
+                        <button class="btn btn-secondary" style="color:var(--danger-red); border-color:rgba(255,59,48,0.2);" onclick="abortAssignedMission(${ride.id})">Cancel Assignment</button>
+                    `;
+                }
             } else if (ride.status === 'ongoing') {
                 badge.textContent = 'Trip in Progress';
                 badge.style.background = 'rgba(52, 199, 89, 0.1)';
@@ -2630,21 +2780,27 @@
 
         // Start Journey operation
         async function initiateStartJourney(rideId, tripType) {
-            const { value: otp } = await Swal.fire({
-                title: 'Start OTP Verification',
-                text: 'Please enter the 4-digit Passenger OTP to start the journey:',
-                input: 'text',
-                inputAttributes: {
-                    maxlength: '4',
-                    pattern: '[0-9]*',
-                    inputmode: 'numeric',
-                    style: 'text-align: center; font-size: 1.8rem; letter-spacing: 6px; font-weight: bold; color: var(--accent-brand);'
-                },
-                showCancelButton: true,
-                confirmButtonText: 'Verify & Start',
-                ...swalDarkOpts
-            });
-            if (!otp || otp.length !== 4) return;
+            const isVendor = activeRideObj && activeRideObj.vendor_id;
+            let otp = '0000';
+            
+            if (!isVendor) {
+                const { value: enteredOtp } = await Swal.fire({
+                    title: 'Start OTP Verification',
+                    text: 'Please enter the 4-digit Passenger OTP to start the journey:',
+                    input: 'text',
+                    inputAttributes: {
+                        maxlength: '4',
+                        pattern: '[0-9]*',
+                        inputmode: 'numeric',
+                        style: 'text-align: center; font-size: 1.8rem; letter-spacing: 6px; font-weight: bold; color: var(--accent-brand);'
+                    },
+                    showCancelButton: true,
+                    confirmButtonText: 'Verify & Start',
+                    ...swalDarkOpts
+                });
+                if (!enteredOtp || enteredOtp.length !== 4) return;
+                otp = enteredOtp;
+            }
 
             let openingOdo = null;
             if (tripType === 'rental') {
@@ -2723,6 +2879,7 @@
                         confirmButtonText: 'OK',
                         ...swalDarkOpts
                     });
+                    stopPreRideWaitingTimer();
                     pollOpportunityJobs();
                 } else {
                     const err = await res.json();
@@ -2730,6 +2887,27 @@
                 }
             } catch (err) {
                 Swal.fire('Error', 'Network connection error.', 'error');
+            }
+        }
+
+        async function markReachedLocation(bookingId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/bookings/reached-pickup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bookingId })
+                });
+
+                if (response.ok) {
+                    showBannerNotification('Status updated: You have reached the pickup location.');
+                    // Force refresh active ride details
+                    pollOpportunityJobs();
+                } else {
+                    const data = await response.json();
+                    Swal.fire('Failed', data.error || 'Could not update status.', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error', 'Network error occurred.', 'error');
             }
         }
 
@@ -2886,19 +3064,24 @@
 
         // Verify completion with passenger OTP
         async function verifyCompletionOtp(rideId) {
-            const { value: otp } = await Swal.fire({
-                title: 'Verify Token',
-                text: 'Enter the 4-digit OTP provided by the passenger:',
-                input: 'text',
-                inputAttributes: {
-                    maxlength: '4',
-                    style: 'text-align: center; font-size: 1.8rem; letter-spacing: 6px; font-weight: bold; color: var(--accent-brand);'
-                },
-                showCancelButton: true,
-                ...swalDarkOpts
-            });
-
-            if (!otp || otp.length !== 4) return;
+            const isVendor = activeRideObj && activeRideObj.vendor_id;
+            let otp = '0000';
+            
+            if (!isVendor) {
+                const { value: enteredOtp } = await Swal.fire({
+                    title: 'Verify Token',
+                    text: 'Enter the 4-digit OTP provided by the passenger:',
+                    input: 'text',
+                    inputAttributes: {
+                        maxlength: '4',
+                        style: 'text-align: center; font-size: 1.8rem; letter-spacing: 6px; font-weight: bold; color: var(--accent-brand);'
+                    },
+                    showCancelButton: true,
+                    ...swalDarkOpts
+                });
+                if (!enteredOtp || enteredOtp.length !== 4) return;
+                otp = enteredOtp;
+            }
 
             try {
                 const res = await fetch(`${API_BASE_URL}/api/bookings/update-status`, {
@@ -3003,7 +3186,7 @@
                     if (fareEl && data.newFare) fareEl.textContent = data.newFare;
 
                     const distEl = document.getElementById('active-dist-val');
-                    if (distEl && data.totalDistance) distEl.textContent = data.totalDistance;
+                    if (distEl && data.totalDistance) distEl.textContent = data.totalDistance + (window.activeRideDuration ? ` (${window.activeRideDuration})` : '');
 
                     const actDistEl = document.getElementById('active-actual-dist');
                     if (actDistEl && data.actualDistance) actDistEl.textContent = data.actualDistance;
@@ -3224,19 +3407,28 @@
             if (ride.journey_start_time && ride.journey_end_time) {
                 const startTime = new Date(ride.journey_start_time);
                 const endTime = new Date(ride.journey_end_time);
-                const durationMs = Math.max(0, endTime - startTime);
-                const durationMins = durationMs / (1000 * 60);
-                
-                const dH = Math.floor(durationMins / 60);
-                const dM = Math.floor(durationMins % 60);
-                timeDurationStr = dH > 0 ? `${dH}h ${dM}m` : `${dM}m`;
+                if (!isNaN(startTime.getTime()) && !isNaN(endTime.getTime())) {
+                    const durationMs = Math.max(0, endTime - startTime);
+                    const durationMins = durationMs / (1000 * 60);
+                    
+                    const dH = Math.floor(durationMins / 60);
+                    const dM = Math.floor(durationMins % 60);
+                    timeDurationStr = dH > 0 ? `${dH}h ${dM}m` : `${dM}m`;
 
-                const distStr = ride.actual_distance || ride.distance || '0';
-                const distanceKm = parseFloat(String(distStr).replace(/[^\d.]/g, '')) || 0;
-                const allowedMins = distanceKm * 2;
-                
-                if (durationMins > allowedMins) {
-                    waitingCharge = Math.ceil((durationMins - allowedMins) * 2);
+                    let allowedMins = 0;
+                    if (ride.trip_type === 'rental') {
+                        const packageVal = ride.rental_package || '2-20';
+                        const [pMaxHrs] = packageVal.split('-').map(Number);
+                        allowedMins = pMaxHrs * 60;
+                    } else {
+                        const distStr = ride.estimated_distance || ride.distance || '0';
+                        const distanceKm = parseFloat(String(distStr).replace(/[^\d.]/g, '')) || 0;
+                        allowedMins = distanceKm * 2;
+                    }
+                    
+                    if (durationMins > allowedMins) {
+                        waitingCharge = Math.ceil((durationMins - allowedMins) * 2);
+                    }
                 }
             }
             
