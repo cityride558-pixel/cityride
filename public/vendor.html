@@ -1406,7 +1406,8 @@
 
                 if (tType === 'local') {
                     const distanceFare = currentDistance * config.perKm;
-                    const baseKmFare = Math.max(config.base, distanceFare);
+                    const baseFareLimit = Math.max(300, config.base || 0);
+                    const baseKmFare = Math.max(baseFareLimit, distanceFare);
                     const peakCharge = baseKmFare * peakMult;
                     if (peakMult > 0) peakLabel = ` [Peak +25%]`;
                     
@@ -1425,7 +1426,8 @@
                         driverAllowance = billableKm > 250 ? 1000 : 800;
                     }
                     const distanceFare = billableKm * config.perKm;
-                    const baseKmFare = Math.max(config.base || 0, distanceFare);
+                    const baseFareLimit = Math.max(300, config.base || 0);
+                    const baseKmFare = Math.max(baseFareLimit, distanceFare);
                     baseFare = baseKmFare + (vType === 'bike' ? 0 : driverAllowance);
                 } else if (tType === 'round') {
                     const minKmPerDay = typeof config.minKmPerDay === 'number' ? config.minKmPerDay : 250;
@@ -1441,7 +1443,8 @@
                         driverAllowance = 800;
                     }
                     const distanceFare = billableKm * config.perKm;
-                    const baseKmFare = Math.max(config.base || 0, distanceFare);
+                    const baseFareLimit = Math.max(300, config.base || 0);
+                    const baseKmFare = Math.max(baseFareLimit, distanceFare);
                     baseFare = baseKmFare + (vType === 'bike' ? 0 : driverAllowance * tripDays);
                 } else if (tType === 'rental') {
                     if (!info.rental) return null;

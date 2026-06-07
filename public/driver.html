@@ -2966,6 +2966,9 @@
             } catch(e) {}
 
             try {
+                // Sync any remaining offline GPS logs before finishing the trip
+                await syncOfflineGpsLogs(rideId);
+
                 const res = await fetch(`${API_BASE_URL}/api/bookings/finish-trip`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -3171,8 +3174,34 @@
             } catch(e) { Swal.fire('Error', 'Request failed.', 'error'); }
         }
 
+        // Sync offline logged GPS coordinates to the server
+        async function syncOfflineGpsLogs(bookingId) {
+            const offlineKey = `offline_gps_${bookingId}`;
+            const offlineLogs = JSON.parse(localStorage.getItem(offlineKey)) || [];
+            if (offlineLogs.length === 0) return;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/bookings/upload-gps-logs-bulk`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bookingId, logs: offlineLogs })
+                });
+                if (res.ok) {
+                    localStorage.removeItem(offlineKey);
+                    console.log(`[Sync] Successfully synced ${offlineLogs.length} offline GPS points.`);
+                }
+            } catch (e) {
+                console.warn('[Sync] Failed to sync offline GPS logs, will retry next update.', e);
+            }
+        }
+
         // Live location update trigger
         async function sendGpsTrackingUpdate(bookingId, lat, lng, acc, speed) {
+            const offlineKey = `offline_gps_${bookingId}`;
+            
+            // Sync any previously cached offline logs if we have connection
+            await syncOfflineGpsLogs(bookingId);
+
             try {
                 const res = await fetch(`${API_BASE_URL}/api/bookings/update-gps-location`, {
                     method: 'POST',
@@ -3200,8 +3229,18 @@
 
                     const waitingEl = document.getElementById('active-waiting-charge');
                     if (waitingEl && data.waitingCharge !== undefined) waitingEl.textContent = `₹${data.waitingCharge}`;
+                } else {
+                    // Fetch status not ok (server error), cache coordinate locally
+                    const offlineLogs = JSON.parse(localStorage.getItem(offlineKey)) || [];
+                    offlineLogs.push({ latitude: lat, longitude: lng, accuracy: acc, speed: speed || 0, time: Date.now() });
+                    localStorage.setItem(offlineKey, JSON.stringify(offlineLogs));
                 }
-            } catch(e) {}
+            } catch(e) {
+                // Network failure, cache coordinate locally
+                const offlineLogs = JSON.parse(localStorage.getItem(offlineKey)) || [];
+                offlineLogs.push({ latitude: lat, longitude: lng, accuracy: acc, speed: speed || 0, time: Date.now() });
+                localStorage.setItem(offlineKey, JSON.stringify(offlineLogs));
+            }
         }
 
         // Sync statistics details

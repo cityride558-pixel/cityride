@@ -1275,6 +1275,7 @@
 
             // Fetch tariff data for fare breakdown
             let baseFare = 0, perKmRate = 0, distanceCharge = 0, subtotal = 0, gst = 0;
+            let peakCharge = 0, driverAllowance = 0;
             try {
                 const tariffRes = await fetch(`${API_BASE_URL}/api/tariffs`);
                 const tariffs = await tariffRes.json();
@@ -1283,26 +1284,51 @@
                 const match = tariffs.find(t => t.vehicle_type === vType && t.category === category);
                 if (match) {
                     const config = typeof match.config === 'string' ? JSON.parse(match.config) : match.config;
+                    baseFare = Math.max(300, config.base || 0);
                     if (category === 'local') {
-                        baseFare = config.base || 0;
                         perKmRate = config.perKm || 0;
                         const minKm = typeof config.minKm === 'number' ? config.minKm : 0;
                         const chargeableKm = Math.max(0, coveredDist - minKm);
                         distanceCharge = chargeableKm * perKmRate;
+                        const baseKmFare = Math.max(baseFare, distanceCharge);
+                        
+                        const getPeakSurcharge = (timeStr) => {
+                            if (!timeStr) return 0;
+                            const [h, m] = timeStr.split(':').map(Number);
+                            const tm = h * 60 + m;
+                            if (tm >= 480 && tm <= 660) return 0.25;
+                            if (tm >= 960 && tm <= 1260) return 0.25;
+                            return 0;
+                        };
+                        const peakMult = getPeakSurcharge(trip.pickup_time);
+                        peakCharge = baseKmFare * peakMult;
+                        subtotal = baseKmFare + peakCharge + waitingCharge;
                     } else if (category === 'oneway') {
-                        baseFare = config.base || 0;
                         perKmRate = config.perKm || 13;
                         const minKm = typeof config.minKm === 'number' ? config.minKm : 130;
                         const billableKm = Math.max(coveredDist, minKm);
                         distanceCharge = billableKm * perKmRate;
+                        const baseKmFare = Math.max(baseFare, distanceCharge);
+                        driverAllowance = (trip.vehicle_type === 'bike') ? 0 : (billableKm > 250 ? 600 : 400);
+                        subtotal = baseKmFare + driverAllowance + waitingCharge;
                     } else if (category === 'round') {
-                        baseFare = config.base || 0;
                         perKmRate = config.perKm || 12;
-                        const minKmPerDay = typeof config.minKmPerDay === 'number' ? config.minKmPerDay : 250;
+                        let tripDays = 1;
+                        if (trip.return_date && trip.pickup_date) {
+                            const start = new Date(trip.pickup_date);
+                            const end = new Date(trip.return_date);
+                            if (end > start) {
+                                const diffTime = Math.abs(end - start);
+                                tripDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                            }
+                        }
+                        const minKmPerDay = (typeof config.minKmPerDay === 'number' ? config.minKmPerDay : 250) * tripDays;
                         const billableKm = Math.max(coveredDist, minKmPerDay);
                         distanceCharge = billableKm * perKmRate;
+                        const baseKmFare = Math.max(baseFare, distanceCharge);
+                        driverAllowance = (trip.vehicle_type === 'bike' ? 0 : ((billableKm > 250 ? 600 : 400) * tripDays));
+                        subtotal = baseKmFare + driverAllowance + waitingCharge;
                     }
-                    subtotal = baseFare + distanceCharge + waitingCharge;
                     gst = Math.ceil(subtotal * 0.05);
                 }
             } catch(e) { console.warn('Could not fetch tariff breakdown:', e); }
@@ -1322,6 +1348,14 @@
                         <span>Distance Charge (${coveredDist.toFixed(1)} km):</span>
                         <span>₹${Math.ceil(distanceCharge)}</span>
                     </div>
+                    ${peakCharge > 0 ? `<div style="display:flex; justify-content:space-between; margin-bottom:0.3rem; font-size:0.9rem; color:#d35400;">
+                        <span>Peak Surcharge:</span>
+                        <span>₹${Math.ceil(peakCharge)}</span>
+                    </div>` : ''}
+                    ${driverAllowance > 0 ? `<div style="display:flex; justify-content:space-between; margin-bottom:0.3rem; font-size:0.9rem; color:#2980b9;">
+                        <span>Driver Allowance:</span>
+                        <span>₹${Math.ceil(driverAllowance)}</span>
+                    </div>` : ''}
                     ${waitingCharge > 0 ? `<div style="display:flex; justify-content:space-between; margin-bottom:0.3rem; font-size:0.9rem; color:#d32f2f;">
                         <span>Waiting Charges:</span>
                         <span>₹${waitingCharge}</span>

@@ -2158,18 +2158,29 @@ async function calculateOdometerDistance(bookingId, startCoordsStr, fallbackEsti
             startCoords = null;
         }
 
-        // Fetch all GPS logs in chronological order
+        // Fetch all GPS logs in chronological order with speed and created_at
         const [gpsLogs] = await db.query(
-            'SELECT latitude, longitude, accuracy FROM taxi_ride_gps_logs WHERE booking_id = ? ORDER BY id ASC',
+            'SELECT latitude, longitude, accuracy, speed, created_at FROM taxi_ride_gps_logs WHERE booking_id = ? ORDER BY id ASC',
             [bookingId]
         );
 
-        // Build list of points starting with startCoords
-        const points = [];
+        // Fetch journey start time for start coordinates timestamp fallback
+        const [bookingRows] = await db.query(
+            'SELECT journey_start_time FROM taxi_bookings WHERE id = ?',
+            [bookingId]
+        );
+        let startTimeMs = Date.now();
+        if (bookingRows.length > 0 && bookingRows[0].journey_start_time) {
+            startTimeMs = new Date(bookingRows[0].journey_start_time).getTime();
+        }
+
+        // Build list of raw points
+        const rawPoints = [];
         if (startCoords) {
             const [sLng, sLat] = startCoords.split(',').map(Number);
             if (!isNaN(sLng) && !isNaN(sLat)) {
-                points.push({ lat: sLat, lng: sLng, acc: 0 }); // start point is 100% accurate
+                // start point is assumed highly accurate (accuracy 5 meters)
+                rawPoints.push({ lat: sLat, lng: sLng, acc: 5, time: startTimeMs });
             }
         }
 
@@ -2177,33 +2188,97 @@ async function calculateOdometerDistance(bookingId, startCoordsStr, fallbackEsti
             const lat = parseFloat(log.latitude);
             const lng = parseFloat(log.longitude);
             const acc = parseFloat(log.accuracy) || 0;
+            const logTime = log.created_at ? new Date(log.created_at).getTime() : Date.now();
             if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
-                points.push({ lat, lng, acc });
+                rawPoints.push({ lat, lng, acc, time: logTime });
             }
         }
 
-        // Sum consecutive segment distances
-        if (points.length > 1) {
-            let prevPoint = points[0];
-            for (let i = 1; i < points.length; i++) {
-                const currentPoint = points[i];
-                
-                // Filter out low accuracy jumps (acc > 80m is generally noisy)
-                if (currentPoint.acc > 80) {
-                    continue;
+        if (rawPoints.length <= 1) {
+            return 0;
+        }
+
+        // Filter out extreme accuracy outliers (acc > 120m is extremely noisy/unreliable)
+        const filteredPoints = rawPoints.filter(p => p.acc <= 120);
+        if (filteredPoints.length <= 1) {
+            return 0;
+        }
+
+        // Kalman Filter Implementation
+        class LatLngKalmanFilter {
+            constructor(noise = 3.0) {
+                this.Q_metres_per_second = noise;
+                this.variance = -1.0;
+                this.lat = 0.0;
+                this.lng = 0.0;
+                this.lastTimeStamp = 0;
+            }
+
+            process(lat, lng, accuracy, timeStampMs) {
+                if (this.variance < 0) {
+                    this.lat = lat;
+                    this.lng = lng;
+                    this.variance = accuracy * accuracy;
+                    this.lastTimeStamp = timeStampMs;
+                    return { lat, lng };
                 }
 
-                const segmentDist = getDistance(prevPoint.lat, prevPoint.lng, currentPoint.lat, currentPoint.lng);
-                
-                // Filter out stationary jitter (ignore updates < 15m)
-                if (segmentDist > 0.015) {
-                    actualDistKm += segmentDist;
-                    prevPoint = currentPoint;
+                const durationMs = timeStampMs - this.lastTimeStamp;
+                if (durationMs > 0) {
+                    // Variance increase based on motion prediction uncertainty over time
+                    this.variance += durationMs * (this.Q_metres_per_second / 1000.0) * (this.Q_metres_per_second / 1000.0);
+                    this.lastTimeStamp = timeStampMs;
                 }
+
+                // Kalman gain
+                const K = this.variance / (this.variance + accuracy * accuracy);
+                this.lat += K * (lat - this.lat);
+                this.lng += K * (lng - this.lng);
+                this.variance = (1.0 - K) * this.variance;
+
+                return { lat: this.lat, lng: this.lng };
             }
         }
 
-        console.log(`[Odometer #${bookingId}] Calculated total distance: ${actualDistKm.toFixed(2)} KM (based on ${points.length} points)`);
+        // Smooth all filtered points using the Kalman filter
+        const kf = new LatLngKalmanFilter(3.0); // 3.0 m/s process noise
+        const smoothedPoints = filteredPoints.map(p => {
+            const smoothed = kf.process(p.lat, p.lng, p.acc, p.time);
+            return {
+                lat: smoothed.lat,
+                lng: smoothed.lng,
+                time: p.time
+            };
+        });
+
+        // Sum distances with speed sanity checks
+        let prevPoint = smoothedPoints[0];
+        for (let i = 1; i < smoothedPoints.length; i++) {
+            const currentPoint = smoothedPoints[i];
+            const dtSeconds = Math.max(0.1, (currentPoint.time - prevPoint.time) / 1000.0);
+            const segmentDist = getDistance(prevPoint.lat, prevPoint.lng, currentPoint.lat, currentPoint.lng); // in KM
+
+            if (segmentDist > 0) {
+                const calculatedSpeedMPS = (segmentDist * 1000.0) / dtSeconds; // meters per second
+
+                // Sanity Checks:
+                // 1. Filter out impossible teleportation jumps (speed > 45 m/s or 162 km/h)
+                if (calculatedSpeedMPS > 45.0) {
+                    continue; // Skip this anomalous jump
+                }
+
+                // 2. Ignore tiny jitter noise when stationary
+                // (e.g. movements < 3 meters or extremely slow speed < 0.3 m/s)
+                if (segmentDist < 0.003 || calculatedSpeedMPS < 0.3) {
+                    continue; 
+                }
+
+                actualDistKm += segmentDist;
+                prevPoint = currentPoint;
+            }
+        }
+
+        console.log(`[High-Accuracy Odometer #${bookingId}] Calculated total distance: ${actualDistKm.toFixed(3)} KM (smoothed ${smoothedPoints.length} points)`);
         return actualDistKm;
     } catch (err) {
         console.error(`Error in calculateOdometerDistance for booking #${bookingId}:`, err);
@@ -2374,36 +2449,39 @@ app.post('/api/bookings/start-journey', async (req, res) => {
 
             if (booking.trip_type === 'local') {
                 const config = pricingConfig || { base: 150, perKm: 20, minKm: 0 };
+                const baseFare = Math.max(300, config.base || 0);
                 if (dynamicDistKm <= 0) {
                     // 0 KM = base fare only
-                    dynamicFare = config.base * 1.05;
+                    dynamicFare = baseFare * 1.05;
                     console.log(`[Start Journey #${bookingId}] Dynamic distance is 0 KM. Applying base fare only: ₹${Math.ceil(dynamicFare)}`);
                 } else {
                     const distanceFare = dynamicDistKm * config.perKm;
-                    const baseKmFare = Math.max(config.base, distanceFare);
+                    const baseKmFare = Math.max(baseFare, distanceFare);
                     const peakCharge = baseKmFare * peakMult;
                     dynamicFare = (baseKmFare + peakCharge) * 1.05;
                 }
             } else if (booking.trip_type === 'oneway') {
                 const config = pricingConfig || { base: 0, perKm: 13, minKm: 130 };
+                const baseFare = Math.max(300, config.base || 0);
                 if (dynamicDistKm <= 0) {
                     // 0 KM = base fare + driver allowance only
                     const driverAllowance = booking.vehicle_type === 'bike' ? 0 : 400;
-                    dynamicFare = (config.base + driverAllowance) * 1.05;
+                    dynamicFare = (baseFare + driverAllowance) * 1.05;
                     console.log(`[Start Journey #${bookingId}] Dynamic distance is 0 KM. Applying base fare only: ₹${Math.ceil(dynamicFare)}`);
                 } else {
                     const minKm = typeof config.minKm === 'number' ? config.minKm : 130;
                     const billableDist = Math.max(dynamicDistKm, minKm);
                     const distanceFare = billableDist * (config.perKm || 13);
-                    const baseFare = Math.max(config.base || 0, distanceFare);
+                    const baseKmFare = Math.max(baseFare, distanceFare);
                     const driverAllowance = billableDist > 250 ? 600 : 400;
-                    dynamicFare = (baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance)) * 1.05;
+                    dynamicFare = (baseKmFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance)) * 1.05;
                 }
             } else if (booking.trip_type === 'round') {
                 const config = pricingConfig || { base: 0, perKm: 12, minKmPerDay: 250 };
+                const baseFare = Math.max(300, config.base || 0);
                 if (dynamicDistKm <= 0) {
                     const driverAllowance = booking.vehicle_type === 'bike' ? 0 : 400;
-                    dynamicFare = (config.base + driverAllowance) * 1.05;
+                    dynamicFare = (baseFare + driverAllowance) * 1.05;
                     console.log(`[Start Journey #${bookingId}] Dynamic distance is 0 KM. Applying base fare only: ₹${Math.ceil(dynamicFare)}`);
                 } else {
                     let tripDays = 1;
@@ -2418,9 +2496,9 @@ app.post('/api/bookings/start-journey', async (req, res) => {
                     const minKmForTrip = (typeof config.minKmPerDay === 'number' ? config.minKmPerDay : 250) * tripDays;
                     const billableDist = Math.max(dynamicDistKm, minKmForTrip);
                     const distanceFare = billableDist * (config.perKm || 12);
-                    const baseFare = Math.max(config.base || 0, distanceFare);
+                    const baseKmFare = Math.max(baseFare, distanceFare);
                     const driverAllowance = billableDist > 250 ? 600 : 400;
-                    dynamicFare = ((baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance * tripDays))) * 1.05;
+                    dynamicFare = ((baseKmFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance * tripDays))) * 1.05;
                 }
             }
 
@@ -2659,35 +2737,38 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
 
             if (booking.trip_type === 'local') {
                 const config = pricingConfig || { base: 150, perKm: 20, minKm: 0 };
+                const baseFare = Math.max(300, config.base || 0);
                 if (distanceCovered <= 0) {
                     // 0 KM = base fare only
-                    totalFare = (config.base + waitingCharge) * 1.05;
+                    totalFare = (baseFare + waitingCharge) * 1.05;
                     console.log(`[Finish Trip #${bookingId}] 0 KM distance. Base fare only: ₹${Math.ceil(totalFare)}`);
                 } else {
                     const distanceFare = distanceCovered * config.perKm;
-                    const baseKmFare = Math.max(config.base, distanceFare);
+                    const baseKmFare = Math.max(baseFare, distanceFare);
                     const peakCharge = baseKmFare * peakMult;
                     totalFare = (baseKmFare + peakCharge + waitingCharge) * 1.05;
                 }
             } else if (booking.trip_type === 'oneway') {
                 const config = pricingConfig || { base: 0, perKm: 13, minKm: 130 };
+                const baseFare = Math.max(300, config.base || 0);
                 if (distanceCovered <= 0) {
                     const driverAllowance = booking.vehicle_type === 'bike' ? 0 : 400;
-                    totalFare = (config.base + driverAllowance + waitingCharge) * 1.05;
+                    totalFare = (baseFare + driverAllowance + waitingCharge) * 1.05;
                     console.log(`[Finish Trip #${bookingId}] 0 KM distance. Base fare only: ₹${Math.ceil(totalFare)}`);
                 } else {
                     const minKm = typeof config.minKm === 'number' ? config.minKm : 130;
                     const billableDist = Math.max(distanceCovered, minKm);
                     const distanceFare = billableDist * (config.perKm || 13);
-                    const baseFare = Math.max(config.base || 0, distanceFare);
+                    const baseKmFare = Math.max(baseFare, distanceFare);
                     const driverAllowance = billableDist > 250 ? 600 : 400;
-                    totalFare = (baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance) + waitingCharge) * 1.05;
+                    totalFare = (baseKmFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance) + waitingCharge) * 1.05;
                 }
             } else if (booking.trip_type === 'round') {
                 const config = pricingConfig || { base: 0, perKm: 12, minKmPerDay: 250 };
+                const baseFare = Math.max(300, config.base || 0);
                 if (distanceCovered <= 0) {
                     const driverAllowance = booking.vehicle_type === 'bike' ? 0 : 400;
-                    totalFare = (config.base + driverAllowance + waitingCharge) * 1.05;
+                    totalFare = (baseFare + driverAllowance + waitingCharge) * 1.05;
                     console.log(`[Finish Trip #${bookingId}] 0 KM distance. Base fare only: ₹${Math.ceil(totalFare)}`);
                 } else {
                     let tripDays = 1;
@@ -2702,9 +2783,9 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
                     const minKmForTrip = (typeof config.minKmPerDay === 'number' ? config.minKmPerDay : 250) * tripDays;
                     const billableDist = Math.max(distanceCovered, minKmForTrip);
                     const distanceFare = billableDist * (config.perKm || 12);
-                    const baseFare = Math.max(config.base || 0, distanceFare);
+                    const baseKmFare = Math.max(baseFare, distanceFare);
                     const driverAllowance = billableDist > 250 ? 600 : 400;
-                    totalFare = ((baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance * tripDays)) + waitingCharge) * 1.05;
+                    totalFare = ((baseKmFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance * tripDays)) + waitingCharge) * 1.05;
                 }
             }
 
@@ -2838,20 +2919,23 @@ app.post('/api/bookings/update-gps-location', async (req, res) => {
 
         if (booking.trip_type === 'local') {
             const config = pricingConfig || { base: 150, perKm: 20, minKm: 0 };
+            const baseFare = Math.max(300, config.base || 0);
             const distanceFare = totalDistance * config.perKm;
-            const baseKmFare = Math.max(config.base, distanceFare);
+            const baseKmFare = Math.max(baseFare, distanceFare);
             const peakCharge = baseKmFare * peakMult;
             totalFare = (baseKmFare + peakCharge + waitingCharge) * 1.05;
         } else if (booking.trip_type === 'oneway') {
             const config = pricingConfig || { base: 0, perKm: 13, minKm: 130 };
+            const baseFare = Math.max(300, config.base || 0);
             const minKm = typeof config.minKm === 'number' ? config.minKm : 130;
             const billableDist = Math.max(totalDistance, minKm);
             const distanceFare = billableDist * (config.perKm || 13);
-            const baseFare = Math.max(config.base || 0, distanceFare);
+            const baseKmFare = Math.max(baseFare, distanceFare);
             const driverAllowance = billableDist > 250 ? 600 : 400;
-            totalFare = (baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance) + waitingCharge) * 1.05;
+            totalFare = (baseKmFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance) + waitingCharge) * 1.05;
         } else if (booking.trip_type === 'round') {
             const config = pricingConfig || { base: 0, perKm: 12, minKmPerDay: 250 };
+            const baseFare = Math.max(300, config.base || 0);
             let tripDays = 1;
             if (booking.return_date && booking.pickup_date) {
                 const start = new Date(booking.pickup_date);
@@ -2864,9 +2948,9 @@ app.post('/api/bookings/update-gps-location', async (req, res) => {
             const minKmForTrip = (typeof config.minKmPerDay === 'number' ? config.minKmPerDay : 250) * tripDays;
             const billableDist = Math.max(totalDistance, minKmForTrip);
             const distanceFare = billableDist * (config.perKm || 12);
-            const baseFare = Math.max(config.base || 0, distanceFare);
+            const baseKmFare = Math.max(baseFare, distanceFare);
             const driverAllowance = billableDist > 250 ? 600 : 400;
-            totalFare = ((baseFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance * tripDays)) + waitingCharge) * 1.05;
+            totalFare = ((baseKmFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance * tripDays)) + waitingCharge) * 1.05;
         } else if (booking.trip_type === 'rental') {
             const packageVal = booking.rental_package || '2-20';
             const [pMaxHrs, pMaxKm] = packageVal.split('-').map(Number);
@@ -2905,6 +2989,36 @@ app.post('/api/bookings/update-gps-location', async (req, res) => {
 
     } catch (err) {
         console.error('Error in update-gps-location:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Bulk upload GPS logs collected offline
+app.post('/api/bookings/upload-gps-logs-bulk', async (req, res) => {
+    try {
+        const { bookingId, logs } = req.body;
+        if (!bookingId || !Array.isArray(logs) || logs.length === 0) {
+            return res.json({ success: true, message: 'No offline logs to sync.' });
+        }
+
+        const values = logs.map(log => [
+            bookingId,
+            log.latitude,
+            log.longitude,
+            log.accuracy || 0,
+            log.speed || 0,
+            log.time ? new Date(log.time) : new Date()
+        ]);
+
+        await db.query(
+            'INSERT INTO taxi_ride_gps_logs (booking_id, latitude, longitude, accuracy, speed, created_at) VALUES ?',
+            [values]
+        );
+
+        console.log(`[Offline Sync #${bookingId}] Bulk inserted ${logs.length} GPS logs.`);
+        res.json({ success: true, message: `Successfully synced ${logs.length} offline GPS logs.` });
+    } catch (err) {
+        console.error('Error in upload-gps-logs-bulk:', err);
         res.status(500).json({ error: err.message });
     }
 });

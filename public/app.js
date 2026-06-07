@@ -335,7 +335,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tType.id === 'local') {
                     const config = info.local;
                     const distanceFare = distance * config.perKm;
-                    const baseKmFare = Math.max(config.base, distanceFare);
+                    const baseFareLimit = Math.max(300, config.base || 0);
+                    const baseKmFare = Math.max(baseFareLimit, distanceFare);
                     const peakCharge = baseKmFare * peakMult;
                     totalFare = (baseKmFare + peakCharge) * 1.05;
 
@@ -347,9 +348,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const minKm = config.minKm || 130;
                     const billableDist = Math.max(distance, minKm);
                     const distanceFare = billableDist * config.perKm;
-                    const baseFare = Math.max(config.base || 0, distanceFare);
+                    const baseFareLimit = Math.max(300, config.base || 0);
+                    const baseKmFare = Math.max(baseFareLimit, distanceFare);
                     const driverAllowance = billableDist > 250 ? 600 : 400;
-                    totalFare = (baseFare + (vType === 'bike' ? 0 : driverAllowance)) * 1.05; // Incl 5% GST
+                    totalFare = (baseKmFare + (vType === 'bike' ? 0 : driverAllowance)) * 1.05; // Incl 5% GST
                     displayDistance = `${distance} KM`;
                     detailLabel = `Incl. Allowance & 5% GST.`;
                     if (distance < minKm) detailLabel += ` [${minKm}KM Min Applied]`;
@@ -359,9 +361,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const actualTwoWayDist = distance * 2;
                     const billableDist = Math.max(actualTwoWayDist, minKmForTrip * tripDays);
                     const distanceFare = billableDist * config.perKm;
-                    const baseFare = Math.max(config.base || 0, distanceFare);
+                    const baseFareLimit = Math.max(300, config.base || 0);
+                    const baseKmFare = Math.max(baseFareLimit, distanceFare);
                     const driverAllowance = billableDist > 250 ? 600 : 400;
-                    totalFare = (baseFare + (vType === 'bike' ? 0 : driverAllowance * tripDays)) * 1.05; // Incl 5% GST
+                    totalFare = (baseKmFare + (vType === 'bike' ? 0 : driverAllowance * tripDays)) * 1.05; // Incl 5% GST
                     displayDistance = `${distance} x 2 (${billableDist} KM Billable)`;
                     detailLabel = `${tripDays} Day(s) • Incl. Allowance & 5% GST.`;
                     if (actualTwoWayDist < minKmForTrip * tripDays) detailLabel += ` [${minKmForTrip * tripDays}KM Min Applied]`;
