@@ -849,6 +849,11 @@
                                 <div style="font-size:1.8rem; font-weight:800; letter-spacing:8px; color:var(--text-main);">${activeMission.journey_otp || '----'}</div>
                                 <div style="font-size:0.7rem; color:var(--text-muted); margin-top:5px;">${activeMission.status === 'finished' ? 'Provide this OTP to your captain to complete the payment and ride.' : 'Share this code with your captain ONLY at the end of the journey.'}</div>
                             </div>
+                            ${(activeMission.status === 'pending' || activeMission.status === 'assigned') ? `
+                                <button onclick="cancelRide(${activeMission.id}, ${user.id})" class="btn" style="margin-top: 1.5rem; width: 100%; background: rgba(183, 28, 28, 0.05); border: 1px solid var(--primary-red); color: var(--primary-red); padding: 1rem; font-weight: 700; font-size: 0.9rem; border-radius: 12px; cursor: pointer; transition: all 0.3s ease;">
+                                    🛑 Cancel Mission Request
+                                </button>
+                            ` : ''}
                         </div>
                         <div style="background:rgba(255, 255, 255, 0.02); border:1px solid var(--border-color); padding:2rem; border-radius:20px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
                             <div style="font-size:0.7rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:1rem;">Your Driver</div>

@@ -646,33 +646,40 @@
             }
             .cityride-table tr {
                 margin-bottom: 1.5rem;
-                background: white;
-                border: 1px solid #f0f0f0;
+                background: var(--white);
+                border: 1px solid var(--border-color);
                 border-radius: 16px;
                 padding: 1.25rem;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             }
             .cityride-table td {
                 border: none;
-                padding: 0.75rem 0;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
+                padding: 0.85rem 0 0.85rem 130px;
+                display: block;
                 text-align: right;
-                border-bottom: 1px solid #fafafa;
+                border-bottom: 1px solid var(--border-color);
+                position: relative;
+                min-height: 2.5rem;
             }
             .cityride-table td:last-child {
                 border-bottom: none;
                 margin-top: 0.5rem;
+                padding-bottom: 0;
             }
             .cityride-table td::before {
                 content: attr(data-label);
                 font-weight: 800;
                 text-transform: uppercase;
                 font-size: 0.65rem;
-                color: #999;
+                color: var(--text-muted);
+                position: absolute;
+                left: 0;
+                top: 1rem;
                 text-align: left;
-                margin-right: 1rem;
+                width: 120px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
         }
 
@@ -1369,8 +1376,13 @@
 
             try {
                 if (tabId === 'overview') {
-                    const res = await fetch(`${API_BASE_URL}/api/admin/stats`);
-                    if (!res.ok) throw new Error('Stats Fetch Failed');
+                    let res = await fetch(`${API_BASE_URL}/api/admin/stats`);
+                    if (!res.ok) {
+                        console.warn('Backend proxy connection lost. Initiating silent retry...');
+                        await new Promise(resolve => setTimeout(resolve, 800)); // Wait for server to recreate DB pool
+                        res = await fetch(`${API_BASE_URL}/api/admin/stats`);
+                        if (!res.ok) throw new Error('Stats Fetch Failed Completely');
+                    }
                     const stats = await res.json();
                     
                     const rev = document.getElementById('stat-revenue');

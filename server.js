@@ -2198,15 +2198,15 @@ async function calculateOdometerDistance(bookingId, startCoordsStr, fallbackEsti
             return 0;
         }
 
-        // Filter out extreme accuracy outliers (acc > 120m is extremely noisy/unreliable)
-        const filteredPoints = rawPoints.filter(p => p.acc <= 120);
+        // Filter out extreme accuracy outliers (acc > 200m is extremely noisy/unreliable)
+        const filteredPoints = rawPoints.filter(p => p.acc <= 200);
         if (filteredPoints.length <= 1) {
             return 0;
         }
 
         // Kalman Filter Implementation
         class LatLngKalmanFilter {
-            constructor(noise = 3.0) {
+            constructor(noise = 4.0) {
                 this.Q_metres_per_second = noise;
                 this.variance = -1.0;
                 this.lat = 0.0;
@@ -2241,7 +2241,7 @@ async function calculateOdometerDistance(bookingId, startCoordsStr, fallbackEsti
         }
 
         // Smooth all filtered points using the Kalman filter
-        const kf = new LatLngKalmanFilter(3.0); // 3.0 m/s process noise
+        const kf = new LatLngKalmanFilter(4.0); // 4.0 m/s process noise
         const smoothedPoints = filteredPoints.map(p => {
             const smoothed = kf.process(p.lat, p.lng, p.acc, p.time);
             return {
@@ -2268,8 +2268,8 @@ async function calculateOdometerDistance(bookingId, startCoordsStr, fallbackEsti
                 }
 
                 // 2. Ignore tiny jitter noise when stationary
-                // (e.g. movements < 3 meters or extremely slow speed < 0.3 m/s)
-                if (segmentDist < 0.003 || calculatedSpeedMPS < 0.3) {
+                // (e.g. movements < 1 meter or extremely slow speed < 0.05 m/s or 0.18 km/h)
+                if (segmentDist < 0.001 || calculatedSpeedMPS < 0.05) {
                     continue; 
                 }
 
@@ -2589,7 +2589,7 @@ app.post('/api/bookings/update-status', async (req, res) => {
 // 2.8 Finish Trip (Odometer Input & Fare Calculation / GPS finalization)
 app.post('/api/bookings/finish-trip', async (req, res) => {
     try {
-        const { bookingId, endOdometer, latitude, longitude } = req.body;
+        const { bookingId, endOdometer, latitude, longitude, clientDistance } = req.body;
 
         const [rows] = await db.query('SELECT * FROM taxi_bookings WHERE id = ?', [bookingId]);
         if (rows.length === 0) return res.status(404).json({ error: 'Booking not found.' });
@@ -2699,7 +2699,22 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
             if (startCoords === 'null,null') {
                 startCoords = null;
             }
-            const distanceCovered = await calculateOdometerDistance(bookingId, startCoords);
+            const serverDistance = await calculateOdometerDistance(bookingId, startCoords);
+            let distanceCovered = serverDistance;
+
+            if (clientDistance !== undefined && clientDistance !== null) {
+                const parsedClientDist = parseFloat(clientDistance);
+                if (!isNaN(parsedClientDist) && parsedClientDist > 0) {
+                    // Security check: driver's client distance should be within 15% + 2km of server-calculated distance
+                    const maxAllowedClientDist = serverDistance * 1.15 + 2.0;
+                    if (parsedClientDist <= maxAllowedClientDist) {
+                        distanceCovered = parsedClientDist;
+                        console.log(`[Fare Billing #${bookingId}] Using high-accuracy client-side distance: ${distanceCovered.toFixed(2)} KM (Server calculated: ${serverDistance.toFixed(2)} KM)`);
+                    } else {
+                        console.warn(`[Fare Billing Security #${bookingId}] Client distance (${parsedClientDist.toFixed(2)} KM) exceeded server bounds (max: ${maxAllowedClientDist.toFixed(2)} KM). Defaulting to server distance.`);
+                    }
+                }
+            }
 
 
             // Calculate final time period of the ride
@@ -2824,7 +2839,7 @@ app.post('/api/bookings/finish-trip', async (req, res) => {
 // GPS tracking & deviation calculations in real-time
 app.post('/api/bookings/update-gps-location', async (req, res) => {
     try {
-        const { bookingId, latitude, longitude, accuracy, speed } = req.body;
+        const { bookingId, latitude, longitude, accuracy, speed, clientDistance } = req.body;
         if (!bookingId || latitude === undefined || longitude === undefined) {
             return res.status(400).json({ error: 'bookingId, latitude, and longitude are required.' });
         }
@@ -2865,7 +2880,19 @@ app.post('/api/bookings/update-gps-location', async (req, res) => {
         if (startCoords === 'null,null') {
             startCoords = null;
         }
-        const actualDistKm = await calculateOdometerDistance(bookingId, startCoords);
+        const serverDistKm = await calculateOdometerDistance(bookingId, startCoords);
+        let actualDistKm = serverDistKm;
+
+        if (clientDistance !== undefined && clientDistance !== null) {
+            const parsedClientDist = parseFloat(clientDistance);
+            if (!isNaN(parsedClientDist) && parsedClientDist > 0) {
+                // Security check: driver's client distance should be within 15% + 2km of server-calculated distance
+                const maxAllowedClientDist = serverDistKm * 1.15 + 2.0;
+                if (parsedClientDist <= maxAllowedClientDist) {
+                    actualDistKm = parsedClientDist;
+                }
+            }
+        }
 
         // 4. Check for deviation from planned route - Disabled to ignore initial location selection
         let isDeviated = 0;

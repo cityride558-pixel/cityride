@@ -1817,6 +1817,40 @@
             return R * c;
         }
 
+        // Kalman Filter for real-time coordinate smoothing
+        class LatLngKalmanFilter {
+            constructor(noise = 3.0) {
+                this.Q_metres_per_second = noise;
+                this.variance = -1.0;
+                this.lat = 0.0;
+                this.lng = 0.0;
+                this.lastTimeStamp = 0;
+            }
+
+            process(lat, lng, accuracy, timeStampMs) {
+                if (this.variance < 0) {
+                    this.lat = lat;
+                    this.lng = lng;
+                    this.variance = accuracy * accuracy;
+                    this.lastTimeStamp = timeStampMs;
+                    return { lat, lng };
+                }
+
+                const durationMs = timeStampMs - this.lastTimeStamp;
+                if (durationMs > 0) {
+                    this.variance += durationMs * (this.Q_metres_per_second / 1000.0) * (this.Q_metres_per_second / 1000.0);
+                    this.lastTimeStamp = timeStampMs;
+                }
+
+                const K = this.variance / (this.variance + accuracy * accuracy);
+                this.lat += K * (lat - this.lat);
+                this.lng += K * (lng - this.lng);
+                this.variance = (1.0 - K) * this.variance;
+
+                return { lat: this.lat, lng: this.lng };
+            }
+        }
+
         // SweetAlert Custom styling helper
         const swalDarkOpts = {
             customClass: {
@@ -2022,6 +2056,29 @@
             }, 100);
         }
 
+        // Smooth Visual Odometer Interpolator (Zero-Latency Rendering)
+        let visualDistanceCovered = 0;
+        setInterval(() => {
+            if (window.activeRideObj && window.activeRideObj.status === 'ongoing' && window.localDistanceCovered !== undefined) {
+                if (window.localDistanceCovered > visualDistanceCovered) {
+                    const diff = window.localDistanceCovered - visualDistanceCovered;
+                    if (diff < 0.001) {
+                        visualDistanceCovered = window.localDistanceCovered;
+                    } else {
+                        visualDistanceCovered += diff * 0.2; // Smooth 20% interpolation frame-by-frame
+                    }
+                } else if (window.localDistanceCovered < visualDistanceCovered) {
+                    visualDistanceCovered = window.localDistanceCovered; // Snap immediately if server overrides down
+                }
+                
+                const floatDistVal = document.getElementById('float-dist-val');
+                if (floatDistVal) floatDistVal.textContent = visualDistanceCovered.toFixed(3);
+                
+                const activeActualDist = document.getElementById('active-actual-dist');
+                if (activeActualDist) activeActualDist.textContent = visualDistanceCovered.toFixed(3) + ' KM';
+            }
+        }, 100);
+
         // GPS Geolocation Watcher logic
         function startGpsTracking() {
             if (!navigator.geolocation) {
@@ -2056,20 +2113,46 @@
                 const floatSpeedVal = document.getElementById('float-speed-val');
                 if (floatSpeedVal) floatSpeedVal.textContent = speedKmh;
 
-                // Client-side odometer accumulator
+                // Client-side real-time odometer accumulator
                 if (activeRideObj && activeRideObj.status === 'ongoing') {
-                    if (window.lastOdometerCoords) {
-                        const segmentDist = getDistance(window.lastOdometerCoords.lat, window.lastOdometerCoords.lng, lat, lng);
-                        // Segment threshold: ignore accuracy jumps > 80m and small jitter < 15m
-                        if (acc <= 80 && segmentDist > 0.015) {
-                            window.localDistanceCovered = (window.localDistanceCovered || 0) + segmentDist;
-                            window.lastOdometerCoords = { lat, lng };
-                            const floatDistVal = document.getElementById('float-dist-val');
-                            if (floatDistVal) floatDistVal.textContent = window.localDistanceCovered.toFixed(1);
-                        }
-                    } else {
-                        window.lastOdometerCoords = { lat, lng };
+                    if (!window.clientKalmanFilter) {
+                        window.clientKalmanFilter = new LatLngKalmanFilter(4.0); // 4.0 process noise matches optimized backend
                     }
+                    
+                    const smoothed = window.clientKalmanFilter.process(lat, lng, acc, Date.now());
+                    
+                    if (window.lastOdoCalcTime) {
+                        const dtSeconds = Math.max(0.1, (Date.now() - window.lastOdoCalcTime) / 1000.0);
+                        let incrementalDistanceKm = 0;
+
+                        // Primary Method: Doppler Speed Integration (Extremely accurate, mirrors physical odometer)
+                        // Uses the GPS chip's native speed to calculate distance precisely via Speed * Time
+                        if (pos.coords.speed !== null && !isNaN(pos.coords.speed) && pos.coords.speed >= 0) {
+                            // Filter out completely stationary micro-vibrations (e.g. speed < 0.2 m/s or ~0.7 km/h)
+                            if (pos.coords.speed >= 0.2) {
+                                incrementalDistanceKm = (pos.coords.speed * dtSeconds) / 1000.0;
+                            }
+                        } 
+                        // Fallback Method: Kalman-Smoothed Coordinates
+                        else if (window.lastSmoothedCoords) {
+                            const segmentDist = getDistance(window.lastSmoothedCoords.lat, window.lastSmoothedCoords.lng, smoothed.lat, smoothed.lng);
+                            const calculatedSpeedMPS = (segmentDist * 1000.0) / dtSeconds;
+
+                            // 1. Reject teleportation jumps (> 45 m/s)
+                            // 2. Ignore stationary micro-jitter (movement < 1m or speed < 0.05 m/s)
+                            if (acc <= 200 && calculatedSpeedMPS <= 45.0 && segmentDist >= 0.001 && calculatedSpeedMPS >= 0.05) {
+                                incrementalDistanceKm = segmentDist;
+                            }
+                        }
+
+                        // Accumulate distance (UI will be smoothly updated by the generic interpolator)
+                        if (incrementalDistanceKm > 0 && incrementalDistanceKm < 5.0) {
+                            window.localDistanceCovered = (window.localDistanceCovered || 0) + incrementalDistanceKm;
+                        }
+                    }
+                    
+                    window.lastSmoothedCoords = { lat: smoothed.lat, lng: smoothed.lng };
+                    window.lastOdoCalcTime = Date.now();
                 }
 
                 // Send live GPS tracking log to backend if trip is active
@@ -2683,8 +2766,6 @@
                     statsWidget.style.display = 'flex';
                     if (window.localDistanceCovered === undefined || window.localDistanceCovered === 0) {
                         window.localDistanceCovered = parseFloat(ride.actual_distance) || 0;
-                        const floatDistVal = document.getElementById('float-dist-val');
-                        if (floatDistVal) floatDistVal.textContent = window.localDistanceCovered.toFixed(1);
                     }
                 } else {
                     statsWidget.style.display = 'none';
@@ -2976,7 +3057,8 @@
                         bookingId: rideId,
                         endOdometer: closingOdo || undefined,
                         latitude: lat,
-                        longitude: lng
+                        longitude: lng,
+                        clientDistance: window.localDistanceCovered || 0
                     })
                 });
 
@@ -3206,7 +3288,7 @@
                 const res = await fetch(`${API_BASE_URL}/api/bookings/update-gps-location`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ bookingId, latitude: lat, longitude: lng, accuracy: acc, speed: speed || 0 })
+                    body: JSON.stringify({ bookingId, latitude: lat, longitude: lng, accuracy: acc, speed: speed || 0, clientDistance: window.localDistanceCovered || 0 })
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -3217,14 +3299,12 @@
                     const distEl = document.getElementById('active-dist-val');
                     if (distEl && data.totalDistance) distEl.textContent = data.totalDistance + (window.activeRideDuration ? ` (${window.activeRideDuration})` : '');
 
-                    const actDistEl = document.getElementById('active-actual-dist');
-                    if (actDistEl && data.actualDistance) actDistEl.textContent = data.actualDistance;
-
-                    const floatDistVal = document.getElementById('float-dist-val');
-                    if (floatDistVal && data.actualDistance) {
-                        const parsedDist = parseFloat(data.actualDistance) || 0;
-                        window.localDistanceCovered = parsedDist;
-                        floatDistVal.textContent = parsedDist.toFixed(1);
+                    if (data.actualDistance) {
+                        const serverDist = parseFloat(data.actualDistance) || 0;
+                        // Align with server if client is 0 or discrepancy is large
+                        if (!window.localDistanceCovered || Math.abs(window.localDistanceCovered - serverDist) > 1.0) {
+                            window.localDistanceCovered = serverDist;
+                        }
                     }
 
                     const waitingEl = document.getElementById('active-waiting-charge');
