@@ -6,6 +6,13 @@
     <title>CityRide Partner | Driver Command Center</title>
     <link rel="icon" type="image/png" href="logo.png">
     
+    <!-- PWA Manifest & Offline Support -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/logo.png">
+    
     <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1878,6 +1885,9 @@
             // Render beautiful empty ledger
             renderLedgerList([]);
 
+            // Load and cache tariffs
+            await cacheTariffs();
+
             // Trigger statistics load from DB
             await syncDashboardStats();
 
@@ -2059,7 +2069,7 @@
         // Smooth Visual Odometer Interpolator (Zero-Latency Rendering)
         let visualDistanceCovered = 0;
         setInterval(() => {
-            if (window.activeRideObj && window.activeRideObj.status === 'ongoing' && window.localDistanceCovered !== undefined) {
+            if (activeRideObj && activeRideObj.status === 'ongoing' && window.localDistanceCovered !== undefined) {
                 if (window.localDistanceCovered > visualDistanceCovered) {
                     const diff = window.localDistanceCovered - visualDistanceCovered;
                     if (diff < 0.001) {
@@ -2076,11 +2086,43 @@
                 
                 const activeActualDist = document.getElementById('active-actual-dist');
                 if (activeActualDist) activeActualDist.textContent = visualDistanceCovered.toFixed(3) + ' KM';
+
+                // Real-time offline fallback fare calculation
+                if (window.gpsUpdateFailed || !navigator.onLine) {
+                    const localFare = calculateLocalFare(activeRideObj, visualDistanceCovered);
+                    if (localFare) {
+                        const fareEl = document.getElementById('active-fare-val');
+                        if (fareEl) fareEl.textContent = localFare;
+                    }
+                }
             }
         }, 100);
 
         // GPS Geolocation Watcher logic
-        function startGpsTracking() {
+        async function startGpsTracking() {
+            // Native Capacitor Permission Prompt
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
+                try {
+                    const permStatus = await window.Capacitor.Plugins.Geolocation.checkPermissions();
+                    if (permStatus.location !== 'granted') {
+                        await window.Capacitor.Plugins.Geolocation.requestPermissions();
+                    }
+                } catch(e) {
+                    console.warn('Capacitor native permission error:', e);
+                }
+            }
+
+            // Web WakeLock to prevent JS suspension during trips
+            if ('wakeLock' in navigator) {
+                try {
+                    if (!window.driverWakeLock) {
+                        window.driverWakeLock = await navigator.wakeLock.request('screen');
+                        console.log('WakeLock activated. Screen will stay on to ensure continuous GPS lock.');
+                    }
+                } catch (err) {
+                    console.warn('WakeLock failed:', err);
+                }
+            }
             if (!navigator.geolocation) {
                 updateGpsUI('disabled');
                 return;
@@ -2153,6 +2195,17 @@
                     
                     window.lastSmoothedCoords = { lat: smoothed.lat, lng: smoothed.lng };
                     window.lastOdoCalcTime = Date.now();
+
+                    // LOSSLESS OFFLINE CACHING: Aggressively cache every valid point (max 1 per second)
+                    // This ensures no curves or turns are lost even if internet goes down for 5+ minutes.
+                    const offlineKey = `offline_gps_${acceptedOpportunityId}`;
+                    const offlineLogs = JSON.parse(localStorage.getItem(offlineKey)) || [];
+                    const lastLog = offlineLogs.length > 0 ? offlineLogs[offlineLogs.length - 1] : null;
+                    
+                    if (!lastLog || (Date.now() - lastLog.time >= 1000)) {
+                        offlineLogs.push({ latitude: lat, longitude: lng, accuracy: acc, speed: speedKmh || 0, time: Date.now() });
+                        localStorage.setItem(offlineKey, JSON.stringify(offlineLogs));
+                    }
                 }
 
                 // Send live GPS tracking log to backend if trip is active
@@ -2277,10 +2330,14 @@
                 
                 if (Array.isArray(jobs)) {
                     allOpportunities = jobs;
-                    renderOpportunityListView(jobs);
+                    
+                    window.passedRideIds = window.passedRideIds || [];
+                    const visibleJobs = jobs.filter(j => !window.passedRideIds.includes(j.id));
+                    
+                    renderOpportunityListView(visibleJobs);
 
                     // Open ping screen if a pending job matches
-                    const urgent = jobs.find(j => j.status === 'pending');
+                    const urgent = visibleJobs.find(j => j.status === 'pending');
                     if (urgent) {
                         triggerOlaPingAlert(urgent);
                     } else {
@@ -2427,6 +2484,10 @@
         }
 
         function declinePing() {
+            window.passedRideIds = window.passedRideIds || [];
+            if (activePingId && !window.passedRideIds.includes(activePingId)) {
+                window.passedRideIds.push(activePingId);
+            }
             document.getElementById('incoming-ping-screen').classList.add('hidden');
             stopAlertSound();
             if (pingTimerInterval) {
@@ -2802,7 +2863,10 @@
             const badge = document.getElementById('active-ride-badge');
             const btnsArea = document.getElementById('active-op-btns');
 
-            drawTripRouteOnMap(ride.pickup_loc, ride.drop_loc, ride.pickup_coords, ride.drop_coords);
+            if (window.lastDrawnRideId !== ride.id) {
+                drawTripRouteOnMap(ride.pickup_loc, ride.drop_loc, ride.pickup_coords, ride.drop_coords);
+                window.lastDrawnRideId = ride.id;
+            }
 
             if (ride.status === 'assigned') {
                 if (!ride.reached_pickup_time) {
@@ -3256,6 +3320,124 @@
             } catch(e) { Swal.fire('Error', 'Request failed.', 'error'); }
         }
 
+        // Cache tariffs locally in localStorage
+        async function cacheTariffs() {
+            if (!navigator.onLine) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/tariffs`);
+                if (res.ok) {
+                    const tariffs = await res.json();
+                    localStorage.setItem('cached_tariffs', JSON.stringify(tariffs));
+                }
+            } catch (e) {
+                console.warn('[Cache] Failed to fetch and cache tariffs:', e);
+            }
+        }
+
+        // Calculate local fallback fare using cached tariffs and current live distance
+        function calculateLocalFare(booking, distanceKm) {
+            try {
+                const cached = localStorage.getItem('cached_tariffs');
+                if (!cached) return null;
+                const tariffs = JSON.parse(cached);
+                
+                const categoryKey = booking.trip_type === 'rental' ? 'rental' : booking.trip_type;
+                let tariff = tariffs.find(t => t.vehicle_type === booking.vehicle_type && t.category === categoryKey);
+                let config = tariff ? (typeof tariff.config === 'string' ? JSON.parse(tariff.config) : tariff.config) : null;
+                
+                if (!config) {
+                    if (booking.trip_type === 'local') {
+                        config = { base: 150, perKm: 20, minKm: 0 };
+                    } else if (booking.trip_type === 'oneway') {
+                        config = { base: 0, perKm: 13, minKm: 130 };
+                    } else if (booking.trip_type === 'round') {
+                        config = { base: 0, perKm: 12, minKmPerDay: 250 };
+                    } else if (booking.trip_type === 'rental') {
+                        config = { '2-20': { base: 600, extraKm: 18, extraHour: 150 } };
+                    }
+                }
+                
+                let waitingCharge = 0;
+                let elapsedMins = 0;
+                if (booking.journey_start_time) {
+                    const startTime = new Date(booking.journey_start_time);
+                    const durationMs = Date.now() - startTime;
+                    elapsedMins = Math.max(0, durationMs / (1000 * 60));
+                }
+                let allowedMins = 0;
+                if (booking.trip_type === 'rental') {
+                    const packageVal = booking.rental_package || '2-20';
+                    const [pMaxHrs] = packageVal.split('-').map(Number);
+                    allowedMins = pMaxHrs * 60;
+                } else {
+                    const originalDistStr = booking.estimated_distance || booking.distance || '0';
+                    const originalDistKm = parseFloat(originalDistStr.replace(/[^\d.]/g, '')) || 0;
+                    allowedMins = originalDistKm * 2;
+                }
+                if (elapsedMins > allowedMins) {
+                    waitingCharge = (elapsedMins - allowedMins) * 2;
+                }
+                
+                let peakMult = 0;
+                const nowHour = new Date().getHours();
+                if ((nowHour >= 8 && nowHour < 11) || (nowHour >= 16 && nowHour < 21)) {
+                    peakMult = 0.25;
+                }
+                
+                let totalFare = 0;
+                if (booking.trip_type === 'local') {
+                    const baseFare = Math.max(300, config.base || 0);
+                    const distanceFare = distanceKm * config.perKm;
+                    const baseKmFare = Math.max(baseFare, distanceFare);
+                    const peakCharge = baseKmFare * peakMult;
+                    totalFare = (baseKmFare + peakCharge + waitingCharge) * 1.05;
+                } else if (booking.trip_type === 'oneway') {
+                    const baseFare = Math.max(300, config.base || 0);
+                    const minKm = typeof config.minKm === 'number' ? config.minKm : 130;
+                    const billableDist = Math.max(distanceKm, minKm);
+                    const distanceFare = billableDist * (config.perKm || 13);
+                    const baseKmFare = Math.max(baseFare, distanceFare);
+                    const driverAllowance = billableDist > 250 ? 600 : 400;
+                    totalFare = (baseKmFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance) + waitingCharge) * 1.05;
+                } else if (booking.trip_type === 'round') {
+                    const baseFare = Math.max(300, config.base || 0);
+                    let tripDays = 1;
+                    if (booking.return_date && booking.pickup_date) {
+                        const start = new Date(booking.pickup_date);
+                        const end = new Date(booking.return_date);
+                        if (end > start) {
+                            const diffTime = Math.abs(end - start);
+                            tripDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                        }
+                    }
+                    const minKmForTrip = (typeof config.minKmPerDay === 'number' ? config.minKmPerDay : 250) * tripDays;
+                    const billableDist = Math.max(distanceKm, minKmForTrip);
+                    const distanceFare = billableDist * (config.perKm || 12);
+                    const baseKmFare = Math.max(baseFare, distanceFare);
+                    const driverAllowance = billableDist > 250 ? 600 : 400;
+                    totalFare = ((baseKmFare + (booking.vehicle_type === 'bike' ? 0 : driverAllowance * tripDays)) + waitingCharge) * 1.05;
+                } else if (booking.trip_type === 'rental') {
+                    const packageVal = booking.rental_package || '2-20';
+                    const [pMaxHrs, pMaxKm] = packageVal.split('-').map(Number);
+                    const packageConfig = config[packageVal] || { base: 600, extraKm: 18, extraHour: 150 };
+                    
+                    const extraKm = Math.max(0, distanceKm - pMaxKm);
+                    const extraKmCharge = extraKm * packageConfig.extraKm;
+                    
+                    const durationHrs = elapsedMins / 60.0;
+                    const extraHrs = Math.max(0, Math.ceil(durationHrs - pMaxHrs));
+                    const extraHourCharge = extraHrs * packageConfig.extraHour;
+                    
+                    totalFare = (packageConfig.base + extraKmCharge + extraHourCharge) * 1.05;
+                }
+                
+                return `₹${Math.ceil(totalFare)}`;
+            } catch (e) {
+                console.error('[Local Fare Calc Error]', e);
+                return null;
+            }
+        }
+
         // Sync offline logged GPS coordinates to the server
         async function syncOfflineGpsLogs(bookingId) {
             const offlineKey = `offline_gps_${bookingId}`;
@@ -3293,6 +3475,8 @@
                 if (res.ok) {
                     const data = await res.json();
                     
+                    window.gpsUpdateFailed = false;
+
                     const fareEl = document.getElementById('active-fare-val');
                     if (fareEl && data.newFare) fareEl.textContent = data.newFare;
 
@@ -3310,12 +3494,16 @@
                     const waitingEl = document.getElementById('active-waiting-charge');
                     if (waitingEl && data.waitingCharge !== undefined) waitingEl.textContent = `₹${data.waitingCharge}`;
                 } else {
+                    window.gpsUpdateFailed = true;
+
                     // Fetch status not ok (server error), cache coordinate locally
                     const offlineLogs = JSON.parse(localStorage.getItem(offlineKey)) || [];
                     offlineLogs.push({ latitude: lat, longitude: lng, accuracy: acc, speed: speed || 0, time: Date.now() });
                     localStorage.setItem(offlineKey, JSON.stringify(offlineLogs));
                 }
             } catch(e) {
+                window.gpsUpdateFailed = true;
+
                 // Network failure, cache coordinate locally
                 const offlineLogs = JSON.parse(localStorage.getItem(offlineKey)) || [];
                 offlineLogs.push({ latitude: lat, longitude: lng, accuracy: acc, speed: speed || 0, time: Date.now() });
@@ -3326,6 +3514,9 @@
         // Sync statistics details
         async function syncDashboardStats() {
             try {
+                // Cache tariffs periodically
+                await cacheTariffs();
+
                 // Sync Profile details & wallet
                 const resProfile = await fetch(`${API_BASE_URL}/api/driver/info/${driverData.id}`);
                 if (resProfile.ok) {
@@ -3797,6 +3988,13 @@
                 setTimeout(() => {
                     splash.classList.add('splash-hidden');
                 }, 1800); // 1.8 second minimum splash for aesthetics
+            }
+
+            // Register Service Worker for Offline PWA Support
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('ServiceWorker registered:', reg.scope))
+                .catch(err => console.log('ServiceWorker registration failed:', err));
             }
         });
     </script>

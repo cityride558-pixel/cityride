@@ -899,11 +899,12 @@
                                 <tr>
                                     <th>Category</th>
                                     <th>Bike</th>
+                                    <th>Auto</th>
                                     <th>Hatchback</th>
                                     <th>Sedan</th>
                                     <th>SUV</th>
                                     <th>Tempo (8+1)</th>
-                                    <th>Mini Bus (24+1)</th>
+                                    <th>Omni Bus (24+1)</th>
                                 </tr>
                             </thead>
                             <tbody id="rate-chart-tbody">
@@ -1073,6 +1074,7 @@
     <script>
         const VEHICLE_ICONS = {
             bike: `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#ff9f0a;"><path d="M5.5 17.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18.5 17.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/><path d="M12 15h3.5l2-4.5H12v-2h2l1.5-3h-4"/><path d="m8 10 2-4h2"/></svg>`,
+            auto: `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#ffcc00;"><path d="M4 11h11l2 3h3v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1H6v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-2l2-3z"/><circle cx="5" cy="15" r="2"/><circle cx="16" cy="15" r="2"/><path d="M7 11V8a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v3"/></svg>`,
             hatchback: `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#2ecc71;"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>`,
             sedan: `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#dc143c;"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M2 12h20"/></svg>`,
             suv: `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#0a84ff;"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M2 12h20M14 6h4v4h-4z"/></svg>`,
@@ -1086,6 +1088,18 @@
                 local: { base: 0, perKm: 10, minKm: 5 },
                 oneway: { base: 0, perKm: 10, minKm: 5, convenience: 0 },
                 round: null, rental: null
+            },
+            auto: {
+                name: 'Auto', capacity: '3+1 Seater', maxPassengers: 3,
+                local: { base: 60, perKm: 12, minKm: 0 },
+                oneway: { base: 0, perKm: 9, minKm: 50 },
+                round: { base: 0, perKm: 8, minKmPerDay: 100 },
+                rental: {
+                    '2-20': { base: 200, extraKm: 10, extraHour: 80 },
+                    '4-40': { base: 380, extraKm: 10, extraHour: 80 },
+                    '8-80': { base: 700, extraKm: 9, extraHour: 70 },
+                    '12-120': { base: 1000, extraKm: 9, extraHour: 70 }
+                }
             },
             hatchback: {
                 name: 'Hatchback Economy', capacity: '4+1 Seater', maxPassengers: 4,
@@ -1136,7 +1150,7 @@
                 }
             },
             van24: {
-                name: 'Mini Bus / Van', capacity: '24+1 Seater', maxPassengers: 24,
+                name: 'Omni Bus', capacity: '24+1 Seater', maxPassengers: 24,
                 local: { base: 1500, perKm: 55, minKm: 0 },
                 oneway: { base: 0, perKm: 42, minKm: 200 },
                 round: { base: 0, perKm: 38, minKmPerDay: 300 },
@@ -1172,6 +1186,7 @@
                 <tr>
                     <td><b>Local (Base Fare)</b></td>
                     <td>₹${pricing.bike.local.base} (Incl ${pricing.bike.local.minKm || 0}KM)</td>
+                    <td>₹${pricing.auto.local.base} (Incl ${pricing.auto.local.minKm || 0}KM)</td>
                     <td>₹${pricing.hatchback.local.base} (Incl ${pricing.hatchback.local.minKm || 0}KM)</td>
                     <td>₹${pricing.sedan.local.base} (Incl ${pricing.sedan.local.minKm || 0}KM)</td>
                     <td>₹${pricing.suv.local.base} (Incl ${pricing.suv.local.minKm || 0}KM)</td>
@@ -1181,6 +1196,7 @@
                 <tr>
                     <td><b>Local (Per KM)</b></td>
                     <td>₹${pricing.bike.local.perKm} / KM</td>
+                    <td>₹${pricing.auto.local.perKm} / KM</td>
                     <td>₹${pricing.hatchback.local.perKm} / KM</td>
                     <td>₹${pricing.sedan.local.perKm} / KM</td>
                     <td>₹${pricing.suv.local.perKm} / KM</td>
@@ -1190,6 +1206,7 @@
                 <tr>
                     <td><b>One-Way Outstation</b></td>
                     <td>₹${pricing.bike.oneway.perKm} / KM (Min ${pricing.bike.oneway.minKm || 5}KM)</td>
+                    <td>₹${pricing.auto.oneway.perKm} / KM (Min ${pricing.auto.oneway.minKm || 50}KM)</td>
                     <td>₹${pricing.hatchback.oneway.perKm} / KM (Min ${pricing.hatchback.oneway.minKm || 100}KM)</td>
                     <td>₹${pricing.sedan.oneway.perKm} / KM (Min ${pricing.sedan.oneway.minKm || 130}KM)</td>
                     <td>₹${pricing.suv.oneway.perKm} / KM (Min ${pricing.suv.oneway.minKm || 130}KM)</td>
@@ -1199,6 +1216,7 @@
                 <tr>
                     <td><b>Round-Trip</b></td>
                     <td>-</td>
+                    <td>₹${pricing.auto.round ? pricing.auto.round.perKm : '-'} / KM (Min ${pricing.auto.round ? (pricing.auto.round.minKmPerDay || 100) : '-'}KM)</td>
                     <td>₹${pricing.hatchback.round ? pricing.hatchback.round.perKm : '-'} / KM (Min ${pricing.hatchback.round ? (pricing.hatchback.round.minKmPerDay || 200) : '-'}KM)</td>
                     <td>₹${pricing.sedan.round ? pricing.sedan.round.perKm : '-'} / KM (Min ${pricing.sedan.round ? (pricing.sedan.round.minKmPerDay || 250) : '-'}KM)</td>
                     <td>₹${pricing.suv.round ? pricing.suv.round.perKm : '-'} / KM (Min ${pricing.suv.round ? (pricing.suv.round.minKmPerDay || 250) : '-'}KM)</td>
@@ -1207,6 +1225,7 @@
                 </tr>
                 <tr>
                     <td><b>Driver Bata</b></td>
+                    <td>-</td>
                     <td>-</td>
                     <td>₹400 / Day</td>
                     <td>₹400 / Day</td>
@@ -1217,6 +1236,7 @@
                 <tr>
                     <td><b>Rental (2Hr/20KM)</b></td>
                     <td>-</td>
+                    <td>₹${pricing.auto.rental && pricing.auto.rental['2-20'] ? pricing.auto.rental['2-20'].base : '-'}</td>
                     <td>₹${pricing.hatchback.rental && pricing.hatchback.rental['2-20'] ? pricing.hatchback.rental['2-20'].base : '-'}</td>
                     <td>₹${pricing.sedan.rental && pricing.sedan.rental['2-20'] ? pricing.sedan.rental['2-20'].base : '-'}</td>
                     <td>₹${pricing.suv.rental && pricing.suv.rental['2-20'] ? pricing.suv.rental['2-20'].base : '-'}</td>
@@ -1226,6 +1246,7 @@
                 <tr>
                     <td><b>Rental (4Hr/40KM)</b></td>
                     <td>-</td>
+                    <td>₹${pricing.auto.rental && pricing.auto.rental['4-40'] ? pricing.auto.rental['4-40'].base : '-'}</td>
                     <td>₹${pricing.hatchback.rental && pricing.hatchback.rental['4-40'] ? pricing.hatchback.rental['4-40'].base : '-'}</td>
                     <td>₹${pricing.sedan.rental && pricing.sedan.rental['4-40'] ? pricing.sedan.rental['4-40'].base : '-'}</td>
                     <td>₹${pricing.suv.rental && pricing.suv.rental['4-40'] ? pricing.suv.rental['4-40'].base : '-'}</td>
@@ -1235,6 +1256,7 @@
                 <tr>
                     <td><b>Rental (8Hr/80KM)</b></td>
                     <td>-</td>
+                    <td>₹${pricing.auto.rental && pricing.auto.rental['8-80'] ? pricing.auto.rental['8-80'].base : '-'}</td>
                     <td>₹${pricing.hatchback.rental && pricing.hatchback.rental['8-80'] ? pricing.hatchback.rental['8-80'].base : '-'}</td>
                     <td>₹${pricing.sedan.rental && pricing.sedan.rental['8-80'] ? pricing.sedan.rental['8-80'].base : '-'}</td>
                     <td>₹${pricing.suv.rental && pricing.suv.rental['8-80'] ? pricing.suv.rental['8-80'].base : '-'}</td>
@@ -1244,6 +1266,7 @@
                 <tr>
                     <td><b>Rental (12Hr/120KM)</b></td>
                     <td>-</td>
+                    <td>₹${pricing.auto.rental && pricing.auto.rental['12-120'] ? pricing.auto.rental['12-120'].base : '-'}</td>
                     <td>₹${pricing.hatchback.rental && pricing.hatchback.rental['12-120'] ? pricing.hatchback.rental['12-120'].base : '-'}</td>
                     <td>₹${pricing.sedan.rental && pricing.sedan.rental['12-120'] ? pricing.sedan.rental['12-120'].base : '-'}</td>
                     <td>₹${pricing.suv.rental && pricing.suv.rental['12-120'] ? pricing.suv.rental['12-120'].base : '-'}</td>

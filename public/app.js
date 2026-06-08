@@ -4,6 +4,7 @@
 
 const VEHICLE_ICONS = {
     bike: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 17.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5z"/><path d="M18.5 17.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5z"/><path d="M10 15h4l2-4h-8z"/><path d="M12 11V7c0-1-1-2-2-2"/><path d="M8 5h4"/></svg>`,
+    auto: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h11l2 3h3v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1H6v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-2l2-3z"/><circle cx="5" cy="15" r="2" fill="currentColor"/><circle cx="16" cy="15" r="2" fill="currentColor"/><path d="M7 11V8a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v3"/></svg>`,
     hatchback: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l2-6h14l2 6v5c0 .6-.4 1-1 1h-1a1 1 0 0 1-1-1v-1H5v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-5z"/><path d="M5 8V6a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2"/><circle cx="7" cy="14" r="2" fill="currentColor"/><circle cx="17" cy="14" r="2" fill="currentColor"/></svg>`,
     sedan: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2" fill="currentColor"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2" fill="currentColor"/><path d="M14 10V8m-4 2V8"/></svg>`,
     suv: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="10" width="20" height="8" rx="1"/><path d="M4 10V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v5"/><circle cx="7" cy="18" r="2" fill="currentColor"/><circle cx="17" cy="18" r="2" fill="currentColor"/><path d="M9 18h6"/></svg>`,
@@ -66,11 +67,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Service Category Switching
     let currentCategory = 'local'; // 'local', 'outstation', or 'rental'
+
+    function updateDateTimeFieldsVisibility() {
+        const bookingTypeGroup = document.getElementById('booking-type-group');
+        const dateGroup = document.getElementById('pickup-date-group');
+        const timeGroup = document.getElementById('pickup-time-group');
+        const bookingTypeSelect = document.getElementById('booking-type');
+
+        if (currentCategory === 'local') {
+            if (bookingTypeGroup) bookingTypeGroup.style.display = 'flex';
+            if (bookingTypeSelect && bookingTypeSelect.value === 'now') {
+                if (dateGroup) dateGroup.style.display = 'none';
+                if (timeGroup) timeGroup.style.display = 'none';
+                if (pickupDate) pickupDate.required = false;
+                const pTime = document.getElementById('pickup-time');
+                if (pTime) pTime.required = false;
+            } else {
+                if (dateGroup) dateGroup.style.display = 'flex';
+                if (timeGroup) timeGroup.style.display = 'flex';
+                if (pickupDate) pickupDate.required = true;
+                const pTime = document.getElementById('pickup-time');
+                if (pTime) pTime.required = true;
+            }
+        } else {
+            if (bookingTypeGroup) bookingTypeGroup.style.display = 'none';
+            if (dateGroup) dateGroup.style.display = 'flex';
+            if (timeGroup) timeGroup.style.display = 'flex';
+            if (pickupDate) pickupDate.required = true;
+            const pTime = document.getElementById('pickup-time');
+            if (pTime) pTime.required = true;
+        }
+    }
+
+    const bookingTypeSelect = document.getElementById('booking-type');
+    if (bookingTypeSelect) {
+        bookingTypeSelect.addEventListener('change', () => {
+            updateDateTimeFieldsVisibility();
+            calculateFare();
+        });
+    }
+
+    updateDateTimeFieldsVisibility();
+
     categoryBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             categoryBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentCategory = btn.dataset.category;
+            
+            updateDateTimeFieldsVisibility();
 
             if (currentCategory === 'rental') {
                 destinationGroup.style.display = 'none';
@@ -164,11 +209,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Initialize with display properties (these could also be moved to DB eventually)
                     const displayInfo = {
                         bike: { name: 'Classy Bike Taxi', capacity: '1 Seater', maxPassengers: 1 },
-                        hatchback: { name: 'Hatchback', capacity: '3+1 Seater', maxPassengers: 3 },
+                        auto: { name: 'Auto', capacity: '3+1 Seater', maxPassengers: 3 },
+                        hatchback: { name: 'Hatchback', capacity: '4+1 Seater', maxPassengers: 4 },
                         sedan: { name: 'Sedan', capacity: '4+1 Seater', maxPassengers: 4 },
                         suv: { name: 'SUV', capacity: '6+1 Seater', maxPassengers: 6 },
                         '8plus1': { name: 'Tempo Traveller', capacity: '8+1 Seater', maxPassengers: 8 },
-                        van24: { name: 'Mini Bus / Van', capacity: '24+1 Seater', maxPassengers: 24 }
+                        van24: { name: 'Omni Bus', capacity: '24+1 Seater', maxPassengers: 24 }
                     };
                     transformed[t.vehicle_type] = { ...displayInfo[t.vehicle_type] };
                 }
@@ -185,8 +231,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     local: { base: 0, perKm: 10, minKm: 5 },
                     oneway: { base: 0, perKm: 10, minKm: 5, convenience: 0 }
                 },
+                auto: {
+                    name: 'Auto', capacity: '3+1 Seater', maxPassengers: 3,
+                    local: { base: 60, perKm: 12, minKm: 0 },
+                    oneway: { base: 0, perKm: 9, minKm: 50 },
+                    round: { base: 0, perKm: 8, minKmPerDay: 100 },
+                    rental: { '2-20': { base: 200, extraKm: 10, extraHour: 80 }, '4-40': { base: 380, extraKm: 10, extraHour: 80 }, '8-80': { base: 700, extraKm: 9, extraHour: 70 }, '12-120': { base: 1000, extraKm: 9, extraHour: 70 } }
+                },
                 hatchback: {
-                    name: 'Hatchback', capacity: '3+1 Seater', maxPassengers: 3,
+                    name: 'Hatchback', capacity: '4+1 Seater', maxPassengers: 4,
                     local: { base: 150, perKm: 20, minKm: 0 },
                     oneway: { base: 0, perKm: 11, minKm: 100 },
                     round: { base: 0, perKm: 10, minKmPerDay: 200 },
@@ -214,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     rental: { '2-20': { base: 1800, extraKm: 30, extraHour: 300 }, '4-40': { base: 3200, extraKm: 30, extraHour: 300 }, '8-80': { base: 6000, extraKm: 28, extraHour: 250 }, '12-120': { base: 8500, extraKm: 25, extraHour: 250 } }
                 },
                 van24: {
-                    name: 'Mini Bus / Van', capacity: '24+1 Seater', maxPassengers: 24,
+                    name: 'Omni Bus', capacity: '24+1 Seater', maxPassengers: 24,
                     local: { base: 1500, perKm: 55, minKm: 0 },
                     oneway: { base: 0, perKm: 42, minKm: 200 },
                     round: { base: 0, perKm: 38, minKmPerDay: 300 },
@@ -300,9 +353,17 @@ document.addEventListener('DOMContentLoaded', () => {
             header.className = 'list-category-header';
             header.textContent = tType.label;
             container.appendChild(header);
+            const vehicleOrder = ['bike', 'auto', 'hatchback', 'sedan', 'suv', '8plus1', 'van24'];
+            const sortedVehicleTypes = Object.keys(pricing).sort((a, b) => {
+                return vehicleOrder.indexOf(a) - vehicleOrder.indexOf(b);
+            });
 
-            Object.keys(pricing).forEach(vType => {
+            sortedVehicleTypes.forEach(vType => {
                 const info = pricing[vType];
+
+                // Restrict Omni Bus and Tempo Traveller from local rides
+                if (tType.id === 'local' && (vType === 'van24' || vType === '8plus1')) return;
+
                 // Check if vehicle is available for this specific trip type
                 if (!info[tType.id]) return;
 
@@ -330,7 +391,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     return highestSurcharge;
                 };
 
-                const peakMult = currentCategory === 'local' ? getPeakSurcharge(document.getElementById('pickup-time').value) : 0;
+                let timeForSurcharge = document.getElementById('pickup-time').value;
+                if (currentCategory === 'local' && document.getElementById('booking-type') && document.getElementById('booking-type').value === 'now') {
+                    const now = new Date();
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    timeForSurcharge = `${hours}:${minutes}`;
+                }
+
+                const peakMult = currentCategory === 'local' ? getPeakSurcharge(timeForSurcharge) : 0;
 
                 if (tType.id === 'local') {
                     const config = info.local;
@@ -750,16 +819,26 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        let bookingDate = document.getElementById('pickup-date').value;
+        let bookingTime = document.getElementById('pickup-time').value;
+        if (currentCategory === 'local' && document.getElementById('booking-type') && document.getElementById('booking-type').value === 'now') {
+            const now = new Date();
+            bookingDate = now.toISOString().split('T')[0];
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            bookingTime = `${hours}:${minutes}`;
+        }
+
         pendingBookingData = {
             userId: user.id,
             pickup: document.getElementById('pickup').value,
             pickupCoords: document.getElementById('pickup').dataset.coords,
             drop: document.getElementById('drop').value,
             dropCoords: document.getElementById('drop').dataset.coords,
-            date: document.getElementById('pickup-date').value,
-            time: document.getElementById('pickup-time').value,
+            date: bookingDate,
+            time: bookingTime,
             passengers: parseInt(passengerInput.value) || 1,
-            vehicle: vehicleSelect.value === 'auto' ? 'sedan' : vehicleSelect.value,
+            vehicle: vehicleSelect.value === 'auto_select' ? 'sedan' : vehicleSelect.value,
             tripType: currentTripType,
             returnDate: currentTripType === 'round' ? document.getElementById('return-date').value : null,
             rentalPackage: currentTripType === 'rental' ? document.getElementById('rental-package').value : null,

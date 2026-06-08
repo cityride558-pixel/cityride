@@ -617,6 +617,31 @@ async function initDB() {
                     config: JSON.stringify({ base: 0, perKm: 10, minKm: 5, convenience: 0 })
                 },
                 {
+                    vehicle_type: 'auto',
+                    category: 'local',
+                    config: JSON.stringify({ base: 60, perKm: 12, minKm: 0 })
+                },
+                {
+                    vehicle_type: 'auto',
+                    category: 'oneway',
+                    config: JSON.stringify({ base: 0, perKm: 9, minKm: 50 })
+                },
+                {
+                    vehicle_type: 'auto',
+                    category: 'round',
+                    config: JSON.stringify({ base: 0, perKm: 8, minKmPerDay: 100 })
+                },
+                {
+                    vehicle_type: 'auto',
+                    category: 'rental',
+                    config: JSON.stringify({ 
+                        '2-20': { base: 200, extraKm: 10, extraHour: 80 }, 
+                        '4-40': { base: 380, extraKm: 10, extraHour: 80 }, 
+                        '8-80': { base: 700, extraKm: 9, extraHour: 70 }, 
+                        '12-120': { base: 1000, extraKm: 9, extraHour: 70 } 
+                    })
+                },
+                {
                     vehicle_type: 'sedan',
                     category: 'local',
                     config: JSON.stringify({ base: 200, perKm: 25, minKm: 0 })
@@ -768,6 +793,15 @@ async function initDB() {
                     }
                     console.log('✅ Migration: 8plus1 and van24 tariffs added to taxi_tariffs.');
                 }
+                // Check if auto specifically are missing (Migration)
+                const [autoRows] = await db.query('SELECT COUNT(*) as cnt FROM taxi_tariffs WHERE vehicle_type = "auto"');
+                if (autoRows[0].cnt === 0) {
+                    const autoTariffs = defaultTariffs.filter(t => t.vehicle_type === 'auto');
+                    for (const t of autoTariffs) {
+                        await db.query('INSERT INTO taxi_tariffs (vehicle_type, category, config) VALUES (?, ?, ?)', [t.vehicle_type, t.category, t.config]);
+                    }
+                    console.log('✅ Migration: auto tariffs added to taxi_tariffs.');
+                }
             }
 
             // Also seed non-prefixed tariffs table if empty
@@ -795,6 +829,15 @@ async function initDB() {
                         await db.query('INSERT INTO tariffs (vehicle_type, category, config) VALUES (?, ?, ?)', [t.vehicle_type, t.category, t.config]);
                     }
                     console.log('✅ Migration: 8plus1 and van24 tariffs (non-prefixed) added to tariffs.');
+                }
+                // Check if auto specifically are missing (Migration)
+                const [autoRows2] = await db.query('SELECT COUNT(*) as cnt FROM tariffs WHERE vehicle_type = "auto"');
+                if (autoRows2[0].cnt === 0) {
+                    const autoTariffs = defaultTariffs.filter(t => t.vehicle_type === 'auto');
+                    for (const t of autoTariffs) {
+                        await db.query('INSERT INTO tariffs (vehicle_type, category, config) VALUES (?, ?, ?)', [t.vehicle_type, t.category, t.config]);
+                    }
+                    console.log('✅ Migration: auto tariffs added to tariffs.');
                 }
             }
             } catch (e) {

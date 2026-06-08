@@ -61,8 +61,9 @@
         .sidebar::-webkit-scrollbar {
             width: 4px;
         }
+
         .sidebar::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
         }
 
@@ -91,6 +92,7 @@
             font-size: 0.9rem;
             color: var(--text-main) !important;
         }
+
         .logout-item {
             margin-top: 2rem;
             border-top: 1px solid var(--border-color);
@@ -185,24 +187,32 @@
             border: 1px solid rgba(255, 255, 255, 0.06) !important;
             border-radius: 20px !important;
         }
+
         .swal2-title {
             color: #ffffff !important;
         }
+
         .swal2-html-container {
             color: #8e9297 !important;
         }
-        .swal2-input, .swal2-textarea, .swal2-select {
+
+        .swal2-input,
+        .swal2-textarea,
+        .swal2-select {
             background: #090a0f !important;
             color: #ffffff !important;
             border: 1px solid rgba(255, 255, 255, 0.06) !important;
         }
+
         .swal2-validation-message {
             background: rgba(255, 59, 48, 0.1) !important;
             color: #ff3b30 !important;
         }
 
         /* Global Inputs, Selects, and Textareas */
-        input, select, textarea {
+        input,
+        select,
+        textarea {
             background: rgba(255, 255, 255, 0.03) !important;
             color: #ffffff !important;
             border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -212,7 +222,9 @@
             transition: all 0.3s ease !important;
         }
 
-        input:focus, select:focus, textarea:focus {
+        input:focus,
+        select:focus,
+        textarea:focus {
             border-color: var(--primary-red) !important;
             background: rgba(255, 255, 255, 0.05) !important;
             box-shadow: 0 0 10px rgba(183, 28, 28, 0.2) !important;
@@ -632,7 +644,8 @@
                 grid-template-columns: 1fr !important;
             }
 
-            #create-vendor-form, #create-driver-form {
+            #create-vendor-form,
+            #create-driver-form {
                 grid-template-columns: 1fr !important;
             }
 
@@ -640,18 +653,24 @@
             .cityride-table thead {
                 display: none;
             }
-            .cityride-table, .cityride-table tbody, .cityride-table tr, .cityride-table td {
+
+            .cityride-table,
+            .cityride-table tbody,
+            .cityride-table tr,
+            .cityride-table td {
                 display: block;
                 width: 100%;
             }
+
             .cityride-table tr {
                 margin-bottom: 1.5rem;
                 background: var(--white);
                 border: 1px solid var(--border-color);
                 border-radius: 16px;
                 padding: 1.25rem;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             }
+
             .cityride-table td {
                 border: none;
                 padding: 0.85rem 0 0.85rem 130px;
@@ -661,11 +680,13 @@
                 position: relative;
                 min-height: 2.5rem;
             }
+
             .cityride-table td:last-child {
                 border-bottom: none;
                 margin-top: 0.5rem;
                 padding-bottom: 0;
             }
+
             .cityride-table td::before {
                 content: attr(data-label);
                 font-weight: 800;
@@ -691,12 +712,14 @@
             text-align: left;
             min-width: 180px;
         }
+
         .pilot-info-block .p-name {
             font-weight: 700;
             color: var(--text-main);
             font-size: 0.9rem;
             line-height: 1.2;
         }
+
         .pilot-info-block .p-email a {
             font-size: 0.75rem;
             color: var(--info-blue);
@@ -705,6 +728,7 @@
             display: block;
             margin-top: 1px;
         }
+
         .pilot-info-block .p-phone a {
             font-size: 0.75rem;
             color: var(--primary-red);
@@ -712,7 +736,7 @@
             font-weight: 700;
             display: block;
         }
-        
+
         @media (max-width: 1024px) {
             .pilot-info-block {
                 text-align: right;
@@ -736,19 +760,21 @@
         <div class="splash-road-wrap">
             <div class="splash-road"></div>
             <svg class="splash-car" width="64" height="28" viewBox="0 0 64 28" fill="none">
-                <rect x="8" y="12" width="48" height="12" rx="4" fill="#dc143c"/>
-                <path d="M18 12 L22 4 L42 4 L46 12Z" fill="#c01030"/>
-                <rect x="23" y="5" width="8" height="6" rx="1" fill="rgba(150,220,255,0.7)"/>
-                <rect x="33" y="5" width="8" height="6" rx="1" fill="rgba(150,220,255,0.7)"/>
-                <circle cx="18" cy="24" r="4" fill="#1a1a1a" stroke="#555" stroke-width="1.5"/>
-                <circle cx="18" cy="24" r="1.5" fill="#888"/>
-                <circle cx="46" cy="24" r="4" fill="#1a1a1a" stroke="#555" stroke-width="1.5"/>
-                <circle cx="46" cy="24" r="1.5" fill="#888"/>
-                <ellipse cx="57" cy="16" rx="5" ry="3" fill="rgba(255,220,100,0.5)"/>
-                <rect x="54" y="14" width="3" height="4" rx="1" fill="#ffd700"/>
+                <rect x="8" y="12" width="48" height="12" rx="4" fill="#dc143c" />
+                <path d="M18 12 L22 4 L42 4 L46 12Z" fill="#c01030" />
+                <rect x="23" y="5" width="8" height="6" rx="1" fill="rgba(150,220,255,0.7)" />
+                <rect x="33" y="5" width="8" height="6" rx="1" fill="rgba(150,220,255,0.7)" />
+                <circle cx="18" cy="24" r="4" fill="#1a1a1a" stroke="#555" stroke-width="1.5" />
+                <circle cx="18" cy="24" r="1.5" fill="#888" />
+                <circle cx="46" cy="24" r="4" fill="#1a1a1a" stroke="#555" stroke-width="1.5" />
+                <circle cx="46" cy="24" r="1.5" fill="#888" />
+                <ellipse cx="57" cy="16" rx="5" ry="3" fill="rgba(255,220,100,0.5)" />
+                <rect x="54" y="14" width="3" height="4" rx="1" fill="#ffd700" />
             </svg>
         </div>
-        <div class="splash-progress-wrap"><div class="splash-progress-bar"></div></div>
+        <div class="splash-progress-wrap">
+            <div class="splash-progress-bar"></div>
+        </div>
         <div class="splash-status">Dispatching Systems…</div>
     </div>
     <div class="mobile-header">
@@ -830,8 +856,12 @@
             <div class="stage-header">
                 <h1>Mission <span class="text-accent">Control</span></h1>
                 <div style="display: flex; gap: 1rem;">
-                    <button class="btn btn-primary" style="padding: 0.6rem 1.2rem; font-size: 0.8rem; background: #2e7d32;" onclick="downloadCSV()">CSV Report</button>
-                    <button class="btn btn-primary" style="padding: 0.6rem 1.2rem; font-size: 0.8rem; background: #c62828;" onclick="downloadPDF()">PDF Report</button>
+                    <button class="btn btn-primary"
+                        style="padding: 0.6rem 1.2rem; font-size: 0.8rem; background: #2e7d32;"
+                        onclick="downloadCSV()">CSV Report</button>
+                    <button class="btn btn-primary"
+                        style="padding: 0.6rem 1.2rem; font-size: 0.8rem; background: #c62828;"
+                        onclick="downloadPDF()">PDF Report</button>
                 </div>
             </div>
 
@@ -888,54 +918,71 @@
 
             <!-- Tab Sub-Navigation -->
             <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
-                <button class="btn" style="background: var(--primary-red); color: white; padding: 0.6rem 1.2rem; border: none;" onclick="showFleetSubSection('active-pilots')">🏎️ Active Pilots</button>
-                <button class="btn" style="background: rgba(255, 255, 255, 0.03); color: var(--text-muted); padding: 0.6rem 1.2rem; border: 1px solid var(--border-color);" onclick="showFleetSubSection('pending-apps')">📋 Pending Applications</button>
-                <button class="btn" style="background: rgba(255, 255, 255, 0.03); color: var(--text-muted); padding: 0.6rem 1.2rem; border: 1px solid var(--border-color);" onclick="showFleetSubSection('onboarding-history')">📜 History</button>
+                <button class="btn"
+                    style="background: var(--primary-red); color: white; padding: 0.6rem 1.2rem; border: none;"
+                    onclick="showFleetSubSection('active-pilots')">🏎️ Active Pilots</button>
+                <button class="btn"
+                    style="background: rgba(255, 255, 255, 0.03); color: var(--text-muted); padding: 0.6rem 1.2rem; border: 1px solid var(--border-color);"
+                    onclick="showFleetSubSection('pending-apps')">📋 Pending Applications</button>
+                <button class="btn"
+                    style="background: rgba(255, 255, 255, 0.03); color: var(--text-muted); padding: 0.6rem 1.2rem; border: 1px solid var(--border-color);"
+                    onclick="showFleetSubSection('onboarding-history')">📜 History</button>
             </div>
 
             <!-- Active Pilots Section -->
             <div id="active-pilots-section" class="fleet-subsection">
                 <!-- Create Driver Form -->
-                <div class="data-table-container" style="margin-bottom: 3rem; background: var(--admin-sidebar); color: white;">
+                <div class="data-table-container"
+                    style="margin-bottom: 3rem; background: var(--admin-sidebar); color: white;">
                     <h3 style="margin-bottom: 2rem;">Induct Partner Pilot</h3>
-                    <form id="create-driver-form" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
+                    <form id="create-driver-form"
+                        style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
                         <div class="input-group">
                             <label style="color: rgba(255,255,255,0.7);">Full Name</label>
-                            <input type="text" id="d-name" placeholder="Pilot Name" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
+                            <input type="text" id="d-name" placeholder="Pilot Name" required
+                                style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
                         </div>
                         <div class="input-group">
                             <label style="color: rgba(255,255,255,0.7);">Email</label>
-                            <input type="email" id="d-email" placeholder="pilot@cityridetaxi.com" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
+                            <input type="email" id="d-email" placeholder="pilot@cityridetaxi.com" required
+                                style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
                         </div>
                         <div class="input-group">
                             <label style="color: rgba(255,255,255,0.7);">Access Key (Password)</label>
-                            <input type="text" id="d-pass" placeholder="Pilot123!" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
+                            <input type="text" id="d-pass" placeholder="Pilot123!" required
+                                style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
                         </div>
                         <div class="input-group">
                             <label style="color: rgba(255,255,255,0.7);">Phone</label>
-                            <input type="text" id="d-phone" placeholder="Pilot Signal" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
+                            <input type="text" id="d-phone" placeholder="Pilot Signal" required
+                                style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
                         </div>
                         <div class="input-group">
                             <label style="color: rgba(255,255,255,0.7);">Vehicle Model</label>
-                            <input type="text" id="d-car" placeholder="Black Sedan" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
+                            <input type="text" id="d-car" placeholder="Black Sedan" required
+                                style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
                         </div>
                         <div class="input-group">
                             <label style="color: rgba(255,255,255,0.7);">Vehicle ID</label>
-                            <input type="text" id="d-num" placeholder="TN 01 CRT" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
+                            <input type="text" id="d-num" placeholder="TN 01 CRT" required
+                                style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
                         </div>
                         <div class="input-group">
                             <label style="color: rgba(255,255,255,0.7);">Vehicle Type</label>
-                            <select id="d-type" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white; width: 100%; padding: 10px; border-radius: 8px;">
-                                <option value="hatchback" style="color: black;">Hatchback</option>
+                            <select id="d-type" required
+                                style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white; width: 100%; padding: 10px; border-radius: 8px;">
+                                <option value="bike" style="color: black;">Bike</option>
+                                <option value="auto" style="color: black;">Auto (3+1)</option>
+                                <option value="hatchback" style="color: black;">Hatchback (4+1)</option>
                                 <option value="sedan" style="color: black;">Sedan</option>
                                 <option value="suv" style="color: black;">SUV</option>
-                                <option value="bike" style="color: black;">Bike</option>
                                 <option value="8plus1" style="color: black;">Tempo Traveller (8+1)</option>
-                                <option value="van24" style="color: black;">Mini Bus / Van (24+1)</option>
+                                <option value="van24" style="color: black;">Omni Bus (24+1)</option>
                             </select>
                         </div>
                         <div style="grid-column: span 3;">
-                            <button type="submit" class="btn btn-primary" style="width: 100%;">Authorize Partner Pilot</button>
+                            <button type="submit" class="btn btn-primary" style="width: 100%;">Authorize Partner
+                                Pilot</button>
                         </div>
                     </form>
                 </div>
@@ -1052,35 +1099,44 @@
                 <h1>Business <span class="text-accent">Partners</span></h1>
                 <p>Manage secondary booking dealers and business growth partners.</p>
             </div>
-            <div class="data-table-container" style="margin-bottom: 3rem; background: var(--admin-sidebar); color: white;">
+            <div class="data-table-container"
+                style="margin-bottom: 3rem; background: var(--admin-sidebar); color: white;">
                 <h3 style="margin-bottom: 2rem;">Induct Business Partner</h3>
-                <form id="create-vendor-form" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
+                <form id="create-vendor-form"
+                    style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
                     <div class="input-group">
                         <label style="color: rgba(255,255,255,0.7);">Partner ID</label>
-                        <input type="text" id="v-id" placeholder="V-101" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
+                        <input type="text" id="v-id" placeholder="V-101" required
+                            style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
                     </div>
                     <div class="input-group">
                         <label style="color: rgba(255,255,255,0.7);">Full Name</label>
-                        <input type="text" id="v-name" placeholder="Contact Person" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
+                        <input type="text" id="v-name" placeholder="Contact Person" required
+                            style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
                     </div>
                     <div class="input-group">
                         <label style="color: rgba(255,255,255,0.7);">Business Name</label>
-                        <input type="text" id="v-business" placeholder="Travel Agency Name" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
+                        <input type="text" id="v-business" placeholder="Travel Agency Name" required
+                            style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
                     </div>
                     <div class="input-group">
                         <label style="color: rgba(255,255,255,0.7);">Email</label>
-                        <input type="email" id="v-email" placeholder="vendor@partner.com" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
+                        <input type="email" id="v-email" placeholder="vendor@partner.com" required
+                            style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
                     </div>
                     <div class="input-group">
                         <label style="color: rgba(255,255,255,0.7);">Access Key (Password)</label>
-                        <input type="text" id="v-pass" placeholder="Partner123!" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
+                        <input type="text" id="v-pass" placeholder="Partner123!" required
+                            style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
                     </div>
                     <div class="input-group">
                         <label style="color: rgba(255,255,255,0.7);">Phone</label>
-                        <input type="text" id="v-phone" placeholder="9876543210" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
+                        <input type="text" id="v-phone" placeholder="9876543210" required
+                            style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); color: white;">
                     </div>
                     <div style="grid-column: span 3;">
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">Authorize Partner Dealer</button>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Authorize Partner
+                            Dealer</button>
                     </div>
                 </form>
             </div>
@@ -1130,7 +1186,8 @@
                     <h1>Peak Time <span class="text-accent">Surcharge Rules</span></h1>
                     <p>Apply percentage-based increases for specific time windows.</p>
                 </div>
-                <button class="btn btn-primary" onclick="openPeakRuleModal()" style="padding: 0.8rem 1.5rem; background: #e65100;">+ New Peak Rule</button>
+                <button class="btn btn-primary" onclick="openPeakRuleModal()"
+                    style="padding: 0.8rem 1.5rem; background: #e65100;">+ New Peak Rule</button>
             </div>
 
             <div class="data-table-container">
@@ -1149,7 +1206,7 @@
                 </table>
             </div>
         </div>
-            
+
 
     </main>
 
@@ -1181,13 +1238,15 @@
                     </div>
                     <div class="input-group">
                         <label>Vehicle Type</label>
-                        <select id="edit-d-type" required style="width: 100%; padding: 0.85rem 1rem; border-radius: 10px; border: 1px solid rgba(0,0,0,0.1); font-family: inherit; font-size: 1rem;">
-                            <option value="hatchback">Hatchback</option>
+                        <select id="edit-d-type" required
+                            style="width: 100%; padding: 0.85rem 1rem; border-radius: 10px; border: 1px solid rgba(0,0,0,0.1); font-family: inherit; font-size: 1rem;">
+                            <option value="bike">Bike</option>
+                            <option value="auto">Auto (3+1)</option>
+                            <option value="hatchback">Hatchback (4+1)</option>
                             <option value="sedan">Sedan</option>
                             <option value="suv">SUV</option>
-                            <option value="bike">Bike</option>
                             <option value="8plus1">Tempo Traveller (8+1)</option>
-                            <option value="van24">Mini Bus / Van (24+1)</option>
+                            <option value="van24">Omni Bus (24+1)</option>
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top: 1rem;">Update
@@ -1211,7 +1270,8 @@
                         <label>Balance (₹)</label>
                         <input type="number" step="0.01" id="edit-w-balance" required>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top: 1rem;">Update Balance</button>
+                    <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top: 1rem;">Update
+                        Balance</button>
                 </form>
             </div>
         </div>
@@ -1253,12 +1313,14 @@
                     </div>
                     <div class="input-group">
                         <label>Status</label>
-                        <select id="edit-v-status" style="width: 100%; padding: 0.85rem 1rem; border-radius: 10px; border: 1px solid rgba(0,0,0,0.1); font-family: inherit; font-size: 1rem;">
+                        <select id="edit-v-status"
+                            style="width: 100%; padding: 0.85rem 1rem; border-radius: 10px; border: 1px solid rgba(0,0,0,0.1); font-family: inherit; font-size: 1rem;">
                             <option value="0">Active</option>
                             <option value="1">Deactivated</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top: 1rem;">Update Partner Details</button>
+                    <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top: 1rem;">Update
+                        Partner Details</button>
                 </form>
             </div>
         </div>
@@ -1267,20 +1329,25 @@
     <!-- Transfer Ride Modal -->
     <div id="transfer-ride-modal" class="map-modal" style="display: none;">
         <div class="map-modal-content" style="max-width: 460px;">
-            <div class="map-header" style="background: var(--admin-sidebar); border-bottom: 1px solid var(--border-color);">
+            <div class="map-header"
+                style="background: var(--admin-sidebar); border-bottom: 1px solid var(--border-color);">
                 <h3>🔄 Transfer Ride</h3>
                 <button class="close-map" onclick="closeTransferModal()">&#215;</button>
             </div>
             <div style="padding: 2rem;">
                 <input type="hidden" id="transfer-booking-id">
-                <div id="transfer-booking-info" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius:12px; padding:1rem; margin-bottom:1.5rem; font-size:0.9rem; color:var(--text-main);"></div>
+                <div id="transfer-booking-info"
+                    style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius:12px; padding:1rem; margin-bottom:1.5rem; font-size:0.9rem; color:var(--text-main);">
+                </div>
                 <div class="input-group" style="margin-bottom:1.5rem;">
                     <label>Select New Driver</label>
-                    <select id="transfer-driver-select" style="width:100%; padding:0.85rem 1rem; border-radius:10px; font-family:inherit; font-size:1rem;">
+                    <select id="transfer-driver-select"
+                        style="width:100%; padding:0.85rem 1rem; border-radius:10px; font-family:inherit; font-size:1rem;">
                         <option value="">-- Loading drivers... --</option>
                     </select>
                 </div>
-                <button class="btn btn-primary btn-large" onclick="submitTransfer()" style="background: var(--primary-red); border: none;">Confirm Transfer</button>
+                <button class="btn btn-primary btn-large" onclick="submitTransfer()"
+                    style="background: var(--primary-red); border: none;">Confirm Transfer</button>
             </div>
         </div>
     </div>
@@ -1288,12 +1355,14 @@
     <!-- Password Reset Modal -->
     <div id="password-modal" class="map-modal" style="display: none;">
         <div class="map-modal-content" style="max-width: 400px;">
-            <div class="map-header" style="background: var(--admin-sidebar); border-bottom: 1px solid var(--border-color);">
+            <div class="map-header"
+                style="background: var(--admin-sidebar); border-bottom: 1px solid var(--border-color);">
                 <h3>🔐 Reset Password</h3>
                 <button class="close-map" onclick="closePasswordModal()">&#215;</button>
             </div>
             <div style="padding: 2rem;">
-                <p id="password-target-name" style="margin-bottom: 1.5rem; font-weight: 600; color: var(--text-muted);"></p>
+                <p id="password-target-name" style="margin-bottom: 1.5rem; font-weight: 600; color: var(--text-muted);">
+                </p>
                 <form id="password-reset-form">
                     <input type="hidden" id="pass-target-type">
                     <input type="hidden" id="pass-target-id">
@@ -1301,8 +1370,13 @@
                         <label>New Password</label>
                         <div class="password-wrapper">
                             <input type="password" id="new-password" placeholder="Enter new password" required>
-                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('new-password', this)">
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <button type="button" class="password-toggle"
+                                onclick="togglePasswordVisibility('new-password', this)">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
                             </button>
                         </div>
                     </div>
@@ -1310,12 +1384,18 @@
                         <label>Confirm Password</label>
                         <div class="password-wrapper">
                             <input type="password" id="confirm-password" placeholder="Confirm new password" required>
-                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('confirm-password', this)">
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <button type="button" class="password-toggle"
+                                onclick="togglePasswordVisibility('confirm-password', this)">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
                             </button>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-large" style="width:100%; margin-top: 1.5rem; background: #f39c12;">Update Password</button>
+                    <button type="submit" class="btn btn-primary btn-large"
+                        style="width:100%; margin-top: 1.5rem; background: #f39c12;">Update Password</button>
                 </form>
             </div>
         </div>
@@ -1337,7 +1417,7 @@
 
             document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            
+
             section.classList.add('active');
             if (el) el.classList.add('active');
 
@@ -1364,32 +1444,27 @@
         }
 
         async function loadTabData(tabId) {
-            const bodyId = tabId === 'overview' ? 'overview-table-body' : 
-                           tabId === 'bookings' ? 'bookings-table-body' :
-                           tabId === 'fleet' ? 'fleet-table-body' :
-                           tabId === 'wallets' ? 'wallets-table-body' :
-                           tabId === 'users' ? 'users-table-body' :
-                           tabId === 'vendors' ? 'vendors-table-body' :
-                           tabId === 'tariffs' ? 'tariffs-table-body' : null;
-            
+            const bodyId = tabId === 'overview' ? 'overview-table-body' :
+                tabId === 'bookings' ? 'bookings-table-body' :
+                    tabId === 'fleet' ? 'fleet-table-body' :
+                        tabId === 'wallets' ? 'wallets-table-body' :
+                            tabId === 'users' ? 'users-table-body' :
+                                tabId === 'vendors' ? 'vendors-table-body' :
+                                    tabId === 'tariffs' ? 'tariffs-table-body' : null;
+
             const body = bodyId ? document.getElementById(bodyId) : null;
 
             try {
                 if (tabId === 'overview') {
-                    let res = await fetch(`${API_BASE_URL}/api/admin/stats`);
-                    if (!res.ok) {
-                        console.warn('Backend proxy connection lost. Initiating silent retry...');
-                        await new Promise(resolve => setTimeout(resolve, 800)); // Wait for server to recreate DB pool
-                        res = await fetch(`${API_BASE_URL}/api/admin/stats`);
-                        if (!res.ok) throw new Error('Stats Fetch Failed Completely');
-                    }
+                    const res = await fetch(`${API_BASE_URL}/api/admin/stats`);
+                    if (!res.ok) throw new Error('Stats Fetch Failed');
                     const stats = await res.json();
-                    
+
                     const rev = document.getElementById('stat-revenue');
                     const act = document.getElementById('stat-active');
                     const dri = document.getElementById('stat-drivers');
                     const usr = document.getElementById('stat-users');
-                    
+
                     if (rev) rev.textContent = stats && stats.revenue !== undefined ? `₹${stats.revenue.toLocaleString()}` : '₹0';
                     if (act) act.textContent = stats ? stats.activeBookings : '0';
                     if (dri) dri.textContent = stats ? stats.totalDrivers : '0';
@@ -1460,12 +1535,12 @@
                         body.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#888;">Mission Log currently unavailable.</td></tr>';
                         return;
                     }
-                    
+
                     // Handle Abort Requests Section Visibility
                     const aborts = bookings.filter(b => b.status === 'cancel_requested');
                     const abortSection = document.getElementById('abort-requests-section');
                     const abortBody = document.getElementById('cancellations-table-body');
-                    
+
                     if (aborts.length > 0) {
                         abortSection.style.display = 'block';
                         abortBody.innerHTML = '';
@@ -1494,7 +1569,7 @@
                         const fareNum = parseFloat(b.fare.replace('₹', '')) || 0;
                         const markupNum = parseFloat(b.vendor_markup || 0);
                         const baseFare = fareNum - markupNum;
-                        
+
                         let financialInfo = `<strong>₹${fareNum.toFixed(2)}</strong>`;
                         if (b.vendor_id) {
                             financialInfo = `
@@ -1750,14 +1825,14 @@
         function showFleetSubSection(sectionId) {
             document.querySelectorAll('.fleet-subsection').forEach(s => s.style.display = 'none');
             document.getElementById(`${sectionId}-section`).style.display = 'block';
-            
+
             // Update button styles
             const buttons = document.querySelectorAll('#fleet .btn');
             buttons.forEach(btn => {
                 const text = btn.innerText.toLowerCase();
                 const matched = (sectionId === 'active-pilots' && text.includes('active')) ||
-                                (sectionId === 'pending-apps' && text.includes('pending')) ||
-                                (sectionId === 'onboarding-history' && text.includes('history'));
+                    (sectionId === 'pending-apps' && text.includes('pending')) ||
+                    (sectionId === 'onboarding-history' && text.includes('history'));
                 if (matched) {
                     btn.style.background = 'var(--primary-red)';
                     btn.style.color = 'white';
@@ -1833,7 +1908,7 @@
         async function rejectCancel(bookingId) {
             const note = prompt('Enter justification for rejection (optional):');
             if (note === null) return; // cancelled prompt
-            
+
             if (!confirm('Reject this abort request? This mission will remain assigned.')) return;
             try {
                 const res = await fetch(`${API_BASE_URL}/api/admin/reject-cancel`, {
@@ -2173,16 +2248,16 @@
                 alert('No document available to download.');
                 return;
             }
-            
+
             const title = document.getElementById('lightbox-title').textContent || 'document';
             const cleanTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '_');
-            
+
             const tempImg = new Image();
-            
+
             if (img.src.startsWith('http') || img.src.startsWith('//')) {
                 tempImg.crossOrigin = 'anonymous';
             }
-            
+
             function triggerDirectDownload() {
                 if (img.src.startsWith('data:')) {
                     try {
@@ -2229,16 +2304,16 @@
                         });
                 }
             }
-            
-            tempImg.onload = function() {
+
+            tempImg.onload = function () {
                 try {
                     const canvas = document.createElement('canvas');
                     canvas.width = tempImg.naturalWidth || 800;
                     canvas.height = tempImg.naturalHeight || 800;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(tempImg, 0, 0);
-                    
-                    canvas.toBlob(function(blob) {
+
+                    canvas.toBlob(function (blob) {
                         if (!blob) {
                             triggerDirectDownload();
                             return;
@@ -2256,12 +2331,12 @@
                     triggerDirectDownload();
                 }
             };
-            
-            tempImg.onerror = function(err) {
+
+            tempImg.onerror = function (err) {
                 console.error('Image load failed, falling back', err);
                 triggerDirectDownload();
             };
-            
+
             tempImg.src = img.src;
         }
 
@@ -2281,7 +2356,7 @@
             const viewer = document.getElementById('doc-viewer-content');
             document.querySelector('#doc-modal h3').textContent = `Verify: ${app.name} (${app.phone})`;
             viewer.innerHTML = '';
-            
+
             const docs = [
                 { label: 'DL Front', path: app.dl_front },
                 { label: 'DL Back', path: app.dl_back },
@@ -2403,22 +2478,22 @@
         async function downloadPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            
+
             try {
                 const res = await fetch(`${API_BASE_URL}/api/admin/bookings`);
                 const data = await res.json();
-                
+
                 doc.text("CityRideTaxi - Platform Mission Intelligence Report", 14, 15);
                 doc.setFontSize(10);
                 doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
 
                 const tableData = data.map(b => [
-                    b.id, 
-                    b.customer_name, 
+                    b.id,
+                    b.customer_name,
                     (b.trip_type || 'oneway').toUpperCase(),
-                    b.pickup_loc.substring(0, 30) + (b.pickup_loc.length > 30 ? '...' : ''), 
+                    b.pickup_loc.substring(0, 30) + (b.pickup_loc.length > 30 ? '...' : ''),
                     b.drop_loc.substring(0, 30) + (b.drop_loc.length > 30 ? '...' : ''),
-                    b.fare, 
+                    b.fare,
                     b.status
                 ]);
 
@@ -2439,21 +2514,39 @@
         // Consolidation: Script continues after the HTML modals
     </script>
     <!-- Image Lightbox Modal -->
-    <div id="lightbox-modal" class="map-modal" style="display: none; background: rgba(0,0,0,0.92); z-index: 11000; flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 0;">
-        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1.2rem; background: rgba(0,0,0,0.5); border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 11001; box-sizing: border-box;">
+    <div id="lightbox-modal" class="map-modal"
+        style="display: none; background: rgba(0,0,0,0.92); z-index: 11000; flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 0;">
+        <div
+            style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1.2rem; background: rgba(0,0,0,0.5); border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 11001; box-sizing: border-box;">
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <button onclick="rotateLightbox(-90)" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer;">↺ Rotate</button>
-                <button onclick="rotateLightbox(90)" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer;">↻ Rotate</button>
-                <button onclick="zoomLightbox(0.1)" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer;">Zoom +</button>
-                <button onclick="zoomLightbox(-0.1)" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer;">Zoom -</button>
-                <button onclick="downloadLightboxDoc()" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #28a745; border: 1px solid #28a745; color: white; border-radius: 6px; cursor: pointer; font-weight: 500;">⬇ Download</button>
+                <button onclick="rotateLightbox(-90)" class="btn btn-secondary"
+                    style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer;">↺
+                    Rotate</button>
+                <button onclick="rotateLightbox(90)" class="btn btn-secondary"
+                    style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer;">↻
+                    Rotate</button>
+                <button onclick="zoomLightbox(0.1)" class="btn btn-secondary"
+                    style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer;">Zoom
+                    +</button>
+                <button onclick="zoomLightbox(-0.1)" class="btn btn-secondary"
+                    style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer;">Zoom
+                    -</button>
+                <button onclick="downloadLightboxDoc()" class="btn btn-primary"
+                    style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #28a745; border: 1px solid #28a745; color: white; border-radius: 6px; cursor: pointer; font-weight: 500;">⬇
+                    Download</button>
             </div>
-            <button onclick="closeLightbox()" style="color: white; font-size: 2.2rem; background: none; border: none; cursor: pointer; line-height: 1; padding: 0 0.5rem; transition: color 0.2s; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center;">&times;</button>
+            <button onclick="closeLightbox()"
+                style="color: white; font-size: 2.2rem; background: none; border: none; cursor: pointer; line-height: 1; padding: 0 0.5rem; transition: color 0.2s; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center;">&times;</button>
         </div>
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex-grow: 1; width: 100%; height: calc(100% - 70px); padding: 1.5rem; box-sizing: border-box;">
-            <h3 id="lightbox-title" style="color: white; margin-top: 0; margin-bottom: 1.5rem; font-weight: 500; letter-spacing: 1px; font-size: 1.2rem;">Document</h3>
-            <div style="overflow: auto; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
-                <img id="lightbox-img" src="" style="max-width: 90%; max-height: 80%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: transform 0.2s ease; transform: scale(1) rotate(0deg);">
+        <div
+            style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex-grow: 1; width: 100%; height: calc(100% - 70px); padding: 1.5rem; box-sizing: border-box;">
+            <h3 id="lightbox-title"
+                style="color: white; margin-top: 0; margin-bottom: 1.5rem; font-weight: 500; letter-spacing: 1px; font-size: 1.2rem;">
+                Document</h3>
+            <div
+                style="overflow: auto; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
+                <img id="lightbox-img" src=""
+                    style="max-width: 90%; max-height: 80%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: transform 0.2s ease; transform: scale(1) rotate(0deg);">
             </div>
         </div>
     </div>
@@ -2465,12 +2558,16 @@
                 <h3>Document Verification</h3>
                 <button class="close-map" onclick="closeDocModal()">×</button>
             </div>
-            <div id="doc-viewer-content" style="padding: 2rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; max-height: 70vh; overflow-y: auto;">
+            <div id="doc-viewer-content"
+                style="padding: 2rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; max-height: 70vh; overflow-y: auto;">
                 <!-- Images loaded here -->
             </div>
-            <div id="doc-footer" style="padding: 1.5rem; background: #f8f8f8; display: flex; justify-content: flex-end; gap: 1rem; border-top: 1px solid #eee;">
-                <button class="btn btn-primary" id="btn-approve-app" style="background: #2e7d32;">Approve Application</button>
-                <button class="btn btn-primary" id="btn-reject-app" style="background: #c62828;">Reject Application</button>
+            <div id="doc-footer"
+                style="padding: 1.5rem; background: #f8f8f8; display: flex; justify-content: flex-end; gap: 1rem; border-top: 1px solid #eee;">
+                <button class="btn btn-primary" id="btn-approve-app" style="background: #2e7d32;">Approve
+                    Application</button>
+                <button class="btn btn-primary" id="btn-reject-app" style="background: #c62828;">Reject
+                    Application</button>
             </div>
         </div>
     </div>
@@ -2504,7 +2601,7 @@
             document.getElementById('edit-t-id').value = t.id;
             document.getElementById('edit-t-category').value = t.category;
             document.getElementById('tariff-info').textContent = `${t.vehicle_type.toUpperCase()} - ${t.category.toUpperCase()}`;
-            
+
             const container = document.getElementById('tariff-fields-container');
             container.innerHTML = '';
 
@@ -2697,7 +2794,7 @@
 
         // --- INITIALIZATION ---
         let _activeTab = 'overview';
-        
+
         // Handle Sidebar Tab Switching
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', () => {
@@ -2708,7 +2805,7 @@
 
         // Initial Load
         loadTabData('overview');
-        
+
         // Central Command Live Radar Poll (5 seconds)
         setInterval(() => { loadTabData(_activeTab); }, 5000);
     </script>
@@ -2735,7 +2832,8 @@
                         <input type="number" id="p-percent" placeholder="e.g. 25" required>
                     </div>
                     <div style="margin-top: 2rem;">
-                        <button type="submit" class="btn btn-primary" style="width: 100%; background: #e65100;">Add Rule</button>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; background: #e65100;">Add
+                            Rule</button>
                     </div>
                 </form>
             </div>
@@ -2754,4 +2852,5 @@
         });
     </script>
 </body>
+
 </html>

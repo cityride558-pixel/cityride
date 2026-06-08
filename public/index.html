@@ -194,11 +194,19 @@
                                 <div id="drop-suggestions" class="suggestions"></div>
                             </div>
 
-                            <div class="input-group">
+                            <div class="input-group" id="booking-type-group">
+                                <label for="booking-type">Booking Option</label>
+                                <select id="booking-type">
+                                    <option value="now" selected>Ride Now</option>
+                                    <option value="later">Ride Later (Advance Booking)</option>
+                                </select>
+                            </div>
+
+                            <div class="input-group" id="pickup-date-group">
                                 <label for="pickup-date">Departure Date</label>
                                 <input type="date" id="pickup-date" required>
                             </div>
-                            <div class="input-group">
+                            <div class="input-group" id="pickup-time-group">
                                 <label for="pickup-time">Departure Time</label>
                                 <input type="time" id="pickup-time" required>
                             </div>
@@ -226,22 +234,19 @@
                                     <option value="6">6 Passengers</option>
                                     <option value="7">7 Passengers</option>
                                     <option value="8">8 Passengers</option>
-                                    <option value="12">12 Passengers</option>
-                                    <option value="16">16 Passengers</option>
-                                    <option value="20">20 Passengers</option>
-                                    <option value="24">24 Passengers</option>
                                 </select>
                             </div>
                             <div class="input-group" style="display:none;">
                                 <label for="vehicle-type">Vehicle Preference</label>
                                 <select id="vehicle-type">
-                                    <option value="auto">Auto Select</option>
+                                    <option value="auto_select">Auto Select</option>
                                     <option value="bike">Classy Bike Taxi (1 Seater)</option>
-                                    <option value="hatchback">Hatchback (Small / 3+1 Seater)</option>
+                                    <option value="auto">Auto (3+1 Seater)</option>
+                                    <option value="hatchback">Hatchback (4+1 Seater)</option>
                                     <option value="sedan" selected>Sedan (4+1 Seater)</option>
                                     <option value="suv">SUV (Xylo / 6+1 Seater)</option>
                                     <option value="8plus1">Tempo Traveller (8+1 Seater)</option>
-                                    <option value="van24">Mini Bus / Van (24+1 Seater)</option>
+                                    <option value="van24">Omni Bus (24+1 Seater)</option>
                                 </select>
                             </div>
                         </div>
