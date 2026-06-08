@@ -447,11 +447,11 @@
     </div>
     <header class="header">
         <nav class="container nav">
-            <div class="logo" onclick="window.location.href='/'" style="cursor:pointer; display: flex; align-items: center;">
+            <div class="logo" onclick="window.location.href = 'index.html'" style="cursor:pointer; display: flex; align-items: center;">
                 <img src="logo.png" alt="CityRideTaxi Logo" style="height: 50px; width: auto;">
             </div>
             <div class="driver-nav-actions" style="display: flex; gap: 0.8rem; align-items: center;">
-                <button class="btn" onclick="window.location.href='/'"
+                <button class="btn" onclick="window.location.href = 'index.html'"
                     style="padding: 0.6rem 1rem; font-size: 0.85rem; border: 1px solid var(--accents); background: var(--white); color: var(--text-main);">Home</button>
                 <button class="btn btn-primary" onclick="logoutUser()"
                     style="padding: 0.6rem 1rem; font-size: 0.85rem; background: var(--primary-red); border: none;">Logout</button>
@@ -466,7 +466,7 @@
                     <h1>Welcome back, <span id="user-name" class="text-accent">User</span></h1>
                     <p>Track your premium journey history and current bookings.</p>
                 </div>
-                <button class="btn btn-primary" onclick="window.location.href='/'">Book New Ride</button>
+                <button class="btn btn-primary" onclick="window.location.href = 'index.html'">Book New Ride</button>
             </div>
 
             <!-- Stats Ribbon -->
@@ -600,7 +600,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const user = JSON.parse(localStorage.getItem('cityride_member'));
             if (!user) {
-                window.location.href = '/auth';
+                window.location.href = 'auth.html';
                 return;
             }
 
@@ -809,6 +809,20 @@
                                 </div>
                                 <div style="font-size:0.95rem; font-weight:700;">Trip Distance: <span style="color:var(--primary-red)">${activeMission.distance || '0 KM'}</span></div>
                                 <div style="font-size:0.95rem; font-weight:700; margin-top:0.3rem;">Distance Covered: <span style="color:var(--primary-red)">${activeMission.actual_distance || '0.0 KM'}</span></div>
+                                ${activeMission.trip_type !== 'local' ? `
+                                <div style="margin: 0.6rem 0; padding: 0.8rem; background: rgba(255, 255, 255, 0.03); border-radius: 10px; font-size: 0.82rem; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 4px;">
+                                    <div style="display:flex; justify-content:space-between;">
+                                        <span style="color:var(--text-muted);">Opening Odometer:</span>
+                                        <span style="font-weight:700; color:var(--text-main);">${activeMission.start_odometer || 'Awaiting Start'}</span>
+                                    </div>
+                                    ${activeMission.end_odometer ? `
+                                    <div style="display:flex; justify-content:space-between;">
+                                        <span style="color:var(--text-muted);">Closing Odometer:</span>
+                                        <span style="font-weight:700; color:var(--text-main);">${activeMission.end_odometer}</span>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                                ` : ''}
                                 ${activeMission.estimated_fare ? `
                                     <div style="font-size:0.8rem; font-weight:600; color:var(--text-muted); margin-top:0.3rem; opacity:0.6;">Estimated Fare: ${activeMission.estimated_fare}</div>
                                 ` : ''}
@@ -844,11 +858,40 @@
                                  })() : ''}
                             </div>
                             `}
-                            <div style="margin-top:1.5rem; padding:1rem; background:${activeMission.status === 'finished' ? 'rgba(52, 199, 89, 0.05)' : 'rgba(183, 28, 28, 0.05)'}; border-radius:12px; border:1px dashed ${activeMission.status === 'finished' ? '#34c759' : 'var(--primary-red)'}; text-align:center;">
-                                <div style="font-size:0.65rem; text-transform:uppercase; color:${activeMission.status === 'finished' ? '#34c759' : 'var(--primary-red)'}; font-weight:800; letter-spacing:1px; margin-bottom:5px;">${activeMission.status === 'finished' ? 'Trip Completion OTP' : 'Mission Verification OTP'}</div>
-                                <div style="font-size:1.8rem; font-weight:800; letter-spacing:8px; color:var(--text-main);">${activeMission.journey_otp || '----'}</div>
-                                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:5px;">${activeMission.status === 'finished' ? 'Provide this OTP to your captain to complete the payment and ride.' : 'Share this code with your captain ONLY at the end of the journey.'}</div>
-                            </div>
+                            ${(() => {
+                                // For local rides, only show OTP at the start
+                                if (activeMission.trip_type === 'local') {
+                                    if (activeMission.status === 'assigned') {
+                                        return `
+                                            <div style="margin-top:1.5rem; padding:1rem; background:rgba(183, 28, 28, 0.05); border-radius:12px; border:1px dashed var(--primary-red); text-align:center;">
+                                                <div style="font-size:0.65rem; text-transform:uppercase; color:var(--primary-red); font-weight:800; letter-spacing:1px; margin-bottom:5px;">Mission Start OTP</div>
+                                                <div style="font-size:1.8rem; font-weight:800; letter-spacing:8px; color:var(--text-main);">${activeMission.journey_otp || '----'}</div>
+                                                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:5px;">Provide this OTP to your captain to start the ride.</div>
+                                            </div>
+                                        `;
+                                    }
+                                    return ''; // Hide OTP during ongoing local rides
+                                } else {
+                                    // For outstation, round, rental: two OTPs
+                                    if (activeMission.status === 'assigned') {
+                                        return `
+                                            <div style="margin-top:1.5rem; padding:1rem; background:rgba(183, 28, 28, 0.05); border-radius:12px; border:1px dashed var(--primary-red); text-align:center;">
+                                                <div style="font-size:0.65rem; text-transform:uppercase; color:var(--primary-red); font-weight:800; letter-spacing:1px; margin-bottom:5px;">Mission Start OTP</div>
+                                                <div style="font-size:1.8rem; font-weight:800; letter-spacing:8px; color:var(--text-main);">${activeMission.journey_otp || '----'}</div>
+                                                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:5px;">Provide this OTP to your captain to start the ride.</div>
+                                            </div>
+                                        `;
+                                    } else {
+                                        return `
+                                            <div style="margin-top:1.5rem; padding:1rem; background:rgba(52, 199, 89, 0.05); border-radius:12px; border:1px dashed #34c759; text-align:center;">
+                                                <div style="font-size:0.65rem; text-transform:uppercase; color:#34c759; font-weight:800; letter-spacing:1px; margin-bottom:5px;">Trip Completion OTP</div>
+                                                <div style="font-size:1.8rem; font-weight:800; letter-spacing:8px; color:var(--text-main);">${activeMission.end_otp || '----'}</div>
+                                                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:5px;">Provide this OTP to your captain to finish the ride.</div>
+                                            </div>
+                                        `;
+                                    }
+                                }
+                            })()}
                             ${(activeMission.status === 'pending' || activeMission.status === 'assigned') ? `
                                 <button onclick="cancelRide(${activeMission.id}, ${user.id})" class="btn" style="margin-top: 1.5rem; width: 100%; background: rgba(183, 28, 28, 0.05); border: 1px solid var(--primary-red); color: var(--primary-red); padding: 1rem; font-weight: 700; font-size: 0.9rem; border-radius: 12px; cursor: pointer; transition: all 0.3s ease;">
                                     🛑 Cancel Mission Request
@@ -862,50 +905,56 @@
                     `;
 
                     // MAP INITIALIZATION
-                    if (!isMapInitialized) {
-                        isMapInitialized = true;
-                        setTimeout(async () => {
-                            try {
-                                if (trackerMap) {
-                                    trackerMap.remove();
+                    const mapEl = document.getElementById('mission-map');
+                    if (activeMission.trip_type !== 'local') {
+                        if (mapEl) mapEl.style.display = 'none';
+                    } else {
+                        if (mapEl) mapEl.style.display = 'block';
+                        if (!isMapInitialized) {
+                            isMapInitialized = true;
+                            setTimeout(async () => {
+                                try {
+                                    if (trackerMap) {
+                                        trackerMap.remove();
+                                    }
+                                    trackerMap = L.map('mission-map').setView([13.08, 80.27], 13);
+                                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(trackerMap);
+
+                                    const getCoords = async (addr, storedCoords) => {
+                                        if (storedCoords) return storedCoords.split(',').map(Number);
+                                        if (!addr || addr.trim() === '') return null;
+                                        try {
+                                            const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(addr)}&limit=1`);
+                                            if (!r.ok) return null;
+                                            const d = await r.json();
+                                            return d.features[0]?.geometry.coordinates;
+                                        } catch (e) { return null; }
+                                    };
+
+                                    const pCoords = await getCoords(activeMission.pickup_loc, activeMission.pickup_coords);
+                                    const dCoords = await getCoords(activeMission.drop_loc, activeMission.drop_coords);
+
+                                    if (pCoords && dCoords) {
+                                        const pMarker = L.marker([pCoords[1], pCoords[0]]).addTo(trackerMap).bindPopup(`<b>📍 Pickup:</b><br>${activeMission.pickup_loc}`);
+                                        const dMarker = L.marker([dCoords[1], dCoords[0]]).addTo(trackerMap).bindPopup(`<b>🏁 Destination:</b><br>${activeMission.drop_loc}`);
+
+                                        // Draw Route
+                                        try {
+                                            const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${pCoords[0]},${pCoords[1]};${dCoords[0]},${dCoords[1]}?overview=full&geometries=geojson`);
+                                            const routeData = await routeRes.json();
+                                            L.geoJSON(routeData.routes[0].geometry, { style: { color: "#B71C1C", weight: 5, opacity: 0.7 } }).addTo(trackerMap);
+                                        } catch (e) { }
+
+                                        const group = new L.featureGroup([pMarker, dMarker]);
+                                        trackerMap.fitBounds(group.getBounds().pad(0.2));
+                                    }
+                                    trackerMap.invalidateSize();
+                                } catch (e) {
+                                    console.log('Map init failed:', e.message);
+                                    isMapInitialized = false;
                                 }
-                                trackerMap = L.map('mission-map').setView([13.08, 80.27], 13);
-                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(trackerMap);
-
-                                const getCoords = async (addr, storedCoords) => {
-                                    if (storedCoords) return storedCoords.split(',').map(Number);
-                                    if (!addr || addr.trim() === '') return null;
-                                    try {
-                                        const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(addr)}&limit=1`);
-                                        if (!r.ok) return null;
-                                        const d = await r.json();
-                                        return d.features[0]?.geometry.coordinates;
-                                    } catch (e) { return null; }
-                                };
-
-                                const pCoords = await getCoords(activeMission.pickup_loc, activeMission.pickup_coords);
-                                const dCoords = await getCoords(activeMission.drop_loc, activeMission.drop_coords);
-
-                                if (pCoords && dCoords) {
-                                    const pMarker = L.marker([pCoords[1], pCoords[0]]).addTo(trackerMap).bindPopup(`<b>📍 Pickup:</b><br>${activeMission.pickup_loc}`);
-                                    const dMarker = L.marker([dCoords[1], dCoords[0]]).addTo(trackerMap).bindPopup(`<b>🏁 Destination:</b><br>${activeMission.drop_loc}`);
-
-                                    // Draw Route
-                                    try {
-                                        const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${pCoords[0]},${pCoords[1]};${dCoords[0]},${dCoords[1]}?overview=full&geometries=geojson`);
-                                        const routeData = await routeRes.json();
-                                        L.geoJSON(routeData.routes[0].geometry, { style: { color: "#B71C1C", weight: 5, opacity: 0.7 } }).addTo(trackerMap);
-                                    } catch (e) { }
-
-                                    const group = new L.featureGroup([pMarker, dMarker]);
-                                    trackerMap.fitBounds(group.getBounds().pad(0.2));
-                                }
-                                trackerMap.invalidateSize();
-                            } catch (e) {
-                                console.log('Map init failed:', e.message);
-                                isMapInitialized = false;
-                            }
-                        }, 500);
+                            }, 500);
+                        }
                     }
 
                     // Start/Stop driver tracking based on status
@@ -1000,7 +1049,7 @@
 
         function logoutUser() {
             localStorage.removeItem('cityride_member');
-            window.location.href = '/auth';
+            window.location.href = 'auth.html';
         }
 
         //  Cancel Ride 
@@ -1099,7 +1148,7 @@
             const user = JSON.parse(localStorage.getItem('cityride_member'));
             if (!user) {
                 alert("Please log in to repeat this ride.");
-                window.location.href = '/auth';
+                window.location.href = 'auth.html';
                 return;
             }
 

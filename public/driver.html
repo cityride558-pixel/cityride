@@ -1358,7 +1358,7 @@
         
         <!-- Top Sticky Header -->
         <header class="top-header">
-            <div class="logo-wrap" onclick="window.location.href='/'" style="cursor: pointer;">
+            <div class="logo-wrap" onclick="window.location.href = 'index.html'" style="cursor: pointer;">
                 <img src="logo.png" alt="CityRide" class="logo-img">
                 <div class="logo-text">CITYRIDE<span>PARTNER</span></div>
             </div>
@@ -1424,6 +1424,12 @@
                             <span class="active-metric-lbl">Waiting Extra</span>
                             <span class="active-metric-val" id="active-waiting-charge">₹0</span>
                         </div>
+                    </div>
+
+                    <!-- Odometer info for manual rides -->
+                    <div id="active-odo-info" class="hidden" style="margin: 12px 0; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; font-size: 0.8rem; display: flex; flex-direction: column; gap: 4px;">
+                        <div><strong>Opening Odometer:</strong> <span id="active-opening-odo-val">Not Recorded</span></div>
+                        <div id="active-closing-odo-wrap" class="hidden"><strong>Closing Odometer:</strong> <span id="active-closing-odo-val">Not Recorded</span></div>
                     </div>
 
                     <!-- Live Waiting Timer (visible only during ongoing rides) -->
@@ -1875,7 +1881,7 @@
             // Verify pilot login session
             driverData = JSON.parse(localStorage.getItem('cityride_pilot'));
             if (!driverData) {
-                window.location.href = '/driver-login';
+                window.location.href = 'driver-login.html';
                 return;
             }
 
@@ -2823,7 +2829,7 @@
             // Toggle Speed/Distance floating stats widgets
             const statsWidget = document.getElementById('ride-stats-floating');
             if (statsWidget) {
-                if (ride.status === 'ongoing') {
+                if (ride.status === 'ongoing' && ride.trip_type === 'local') {
                     statsWidget.style.display = 'flex';
                     if (window.localDistanceCovered === undefined || window.localDistanceCovered === 0) {
                         window.localDistanceCovered = parseFloat(ride.actual_distance) || 0;
@@ -2832,6 +2838,37 @@
                     statsWidget.style.display = 'none';
                     window.localDistanceCovered = 0;
                     window.lastOdometerCoords = null;
+                }
+            }
+
+            // Show/Hide map and navigation based on trip_type
+            const mapPanel = document.getElementById('map-tracking-panel');
+            const navigationRow = document.querySelector('.navigation-row');
+            if (ride.trip_type !== 'local') {
+                if (mapPanel) mapPanel.classList.add('hidden');
+                if (navigationRow) navigationRow.style.display = 'none';
+            } else {
+                if (mapPanel && isOnline) mapPanel.classList.remove('hidden');
+                if (navigationRow) navigationRow.style.display = 'grid';
+            }
+
+            // Odometer info for manual rides
+            const odoInfoPanel = document.getElementById('active-odo-info');
+            if (odoInfoPanel) {
+                if (ride.trip_type !== 'local') {
+                    odoInfoPanel.classList.remove('hidden');
+                    document.getElementById('active-opening-odo-val').textContent = ride.start_odometer || 'Not Recorded';
+                    const closingWrap = document.getElementById('active-closing-odo-wrap');
+                    if (closingWrap) {
+                        if (['finished', 'completed'].includes(ride.status) && ride.end_odometer) {
+                            closingWrap.classList.remove('hidden');
+                            document.getElementById('active-closing-odo-val').textContent = ride.end_odometer;
+                        } else {
+                            closingWrap.classList.add('hidden');
+                        }
+                    }
+                } else {
+                    odoInfoPanel.classList.add('hidden');
                 }
             }
 
@@ -2863,7 +2900,7 @@
             const badge = document.getElementById('active-ride-badge');
             const btnsArea = document.getElementById('active-op-btns');
 
-            if (window.lastDrawnRideId !== ride.id) {
+            if (ride.trip_type === 'local' && window.lastDrawnRideId !== ride.id) {
                 drawTripRouteOnMap(ride.pickup_loc, ride.drop_loc, ride.pickup_coords, ride.drop_coords);
                 window.lastDrawnRideId = ride.id;
             }
@@ -2948,17 +2985,30 @@
             }
 
             let openingOdo = null;
-            if (tripType === 'rental') {
-                const { value: odo } = await Swal.fire({
-                    title: 'Odometer Check',
-                    text: 'Please submit the starting odometer value:',
-                    input: 'number',
-                    inputAttributes: { min: '1' },
-                    showCancelButton: true,
-                    ...swalDarkOpts
-                });
-                if (!odo) return;
-                openingOdo = parseInt(odo);
+            if (tripType !== 'local') {
+                let isValid = false;
+                while (!isValid) {
+                    const { value: odo } = await Swal.fire({
+                        title: 'Odometer Check',
+                        text: 'Please submit the 8-digit starting odometer value:',
+                        input: 'text',
+                        inputAttributes: {
+                            maxlength: '8',
+                            pattern: '[0-9]*',
+                            inputmode: 'numeric',
+                            style: 'text-align: center; font-weight: bold;'
+                        },
+                        showCancelButton: true,
+                        ...swalDarkOpts
+                    });
+                    if (odo === undefined) return; // User cancelled
+                    if (/^\d{8}$/.test(String(odo).trim())) {
+                        openingOdo = parseInt(odo);
+                        isValid = true;
+                    } else {
+                        await Swal.fire('Invalid Odometer', 'Odometer reading must be exactly 8 digits.', 'error');
+                    }
+                }
             }
 
             let lat = null, lng = null;
@@ -3088,17 +3138,36 @@
         // Conclude trip journey
         async function concludeOngoingTrip(rideId, tripType) {
             let closingOdo = null;
-            if (tripType === 'rental') {
-                const { value: odo } = await Swal.fire({
-                    title: 'Odometer Audit',
-                    text: 'Please enter the closing odometer reading:',
-                    input: 'number',
-                    inputAttributes: { min: '1' },
-                    showCancelButton: true,
-                    ...swalDarkOpts
-                });
-                if (!odo) return;
-                closingOdo = parseInt(odo);
+            if (tripType !== 'local') {
+                const startingOdo = activeRideObj ? parseInt(activeRideObj.start_odometer) : 0;
+                let isValid = false;
+                while (!isValid) {
+                    const { value: odo } = await Swal.fire({
+                        title: 'Odometer Audit',
+                        text: `Please enter the 8-digit closing odometer reading (Starting: ${startingOdo}):`,
+                        input: 'text',
+                        inputAttributes: {
+                            maxlength: '8',
+                            pattern: '[0-9]*',
+                            inputmode: 'numeric',
+                            style: 'text-align: center; font-weight: bold;'
+                        },
+                        showCancelButton: true,
+                        ...swalDarkOpts
+                    });
+                    if (odo === undefined) return; // User cancelled
+                    if (/^\d{8}$/.test(String(odo).trim())) {
+                        const val = parseInt(odo);
+                        if (val >= startingOdo) {
+                            closingOdo = val;
+                            isValid = true;
+                        } else {
+                            await Swal.fire('Invalid Odometer', `Closing odometer (${val}) cannot be less than starting odometer (${startingOdo}).`, 'error');
+                        }
+                    } else {
+                        await Swal.fire('Invalid Odometer', 'Odometer reading must be exactly 8 digits.', 'error');
+                    }
+                }
             }
 
             let lat = null, lng = null;
@@ -3201,7 +3270,11 @@
                         });
                     }
 
-                    pollOpportunityJobs();
+                    if (data.status === 'finished') {
+                        verifyCompletionOtp(rideId);
+                    } else {
+                        pollOpportunityJobs();
+                    }
                 } else {
                     const err = await res.json();
                     Swal.fire('Error', err.error, 'error');
@@ -3976,7 +4049,7 @@
         // Logout
         function logoutUser() {
             localStorage.removeItem('cityride_pilot');
-            window.location.href = '/driver-login';
+            window.location.href = 'driver-login.html';
         }
     </script>
 
